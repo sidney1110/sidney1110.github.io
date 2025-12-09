@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>北海道雪祭八日遊 (雲端同步版)</title>
+    
+    <!-- 核心套件 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Leaflet 地圖 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 基礎設定 --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #334155; margin: 0; padding: 0; overflow: hidden; height: 100dvh; width: 100vw; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 載入畫面 */
+        #loading { position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: center; align-items: center; background: #f8fafc; transition: opacity 0.5s; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- 四季動態粒子 --- */
+        .particle-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; overflow: hidden; }
+        .particle { position: absolute; opacity: 0; }
+        @keyframes fall { 0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(110vh) translateX(20px) rotate(360deg); opacity: 0.6; } }
+        @keyframes float-up { 0% { transform: translateY(110vh) scale(0.5); opacity: 0; } 30% { opacity: 0.6; } 100% { transform: translateY(-10vh) scale(1.2); opacity: 0; } }
+        
+        /* 粒子樣式 */
+        .p-snow { background: #fff; border-radius: 50%; box-shadow: 0 0 4px white; animation: fall linear infinite; }
+        .p-flower { background: radial-gradient(circle, #fbcfe8 0%, #f472b6 100%); border-radius: 100% 0 100% 0; animation: fall linear infinite; }
+        .p-sun { background: radial-gradient(circle, rgba(253,224,71,0.8) 0%, rgba(253,224,71,0) 70%); border-radius: 50%; animation: float-up linear infinite; }
+        .p-leaf { background: linear-gradient(45deg, #f59e0b, #ef4444); border-radius: 2px 20px; animation: fall linear infinite; }
+
+        /* --- UI 元件 --- */
+        .ticket-card {
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            mask: radial-gradient(circle at 0 50%, transparent 10px, black 11px), radial-gradient(circle at 100% 50%, transparent 10px, black 11px);
+            -webkit-mask: radial-gradient(circle at 0 50%, transparent 10px, black 11px), radial-gradient(circle at 100% 50%, transparent 10px, black 11px);
+            mask-composite: intersect; -webkit-mask-composite: source-in;
+        }
+        .hsr-orange-bar { height: 6px; width: 100%; background-color: #ff6b00; }
+        
+        .timeline-track { position: absolute; left: 24px; top: 35px; bottom: -20px; width: 2px; background-color: #e2e8f0; z-index: 0; }
+        .timeline-item:last-child .timeline-track { display: none; }
+        .scroll-touch { -webkit-overflow-scrolling: touch; }
+
+        /* Map Styles */
+        #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: #e2e8f0; }
+        #map { width: 100%; height: 100%; }
+        /* 復刻 v6 的 marker 樣式 */
+        .custom-div-icon { background: transparent; border: none; }
+        .marker-circle { 
+            width: 28px; height: 28px; border-radius: 50%; 
+            background: #2563eb; color: white; 
+            font-weight: bold; font-size: 14px; 
+            display: flex; align-items: center; justify-content: center; 
+            border: 2px solid white; 
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.4); 
+            transition: transform 0.2s;
+        }
+        .marker-circle:active { transform: scale(1.2); }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.8; cursor: pointer; }
+        select { -webkit-appearance: none; appearance: none; background-image: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading -->
+    <div id="loading"><div class="spinner"></div></div>
+
+    <div id="app" class="w-full h-full relative flex flex-col bg-[#f3f4f6]" style="display: none;">
+        
+        <!-- 背景特效 -->
+        <div class="particle-container">
+            <div v-for="i in 30" :key="'p'+i" class="particle" :class="themeConf.particleClass" :style="getParticleStyle(themeConf.particleType)"></div>
+        </div>
+
+        <!-- Header -->
+        <header :class="headerClasses" class="shrink-0 pt-safe pb-2 px-4 shadow-md z-50 transition-colors duration-500 text-white relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex justify-between items-start mb-3 pt-4 relative z-10">
+                <div class="flex-1 mr-2">
+                    <button @click="showMenu=true" class="mb-2 opacity-90 hover:opacity-100 active:scale-95 transition cursor-pointer p-1"><i class="ph-bold ph-list text-2xl"></i></button>
+                    <!-- 標題與日期 -->
+                    <div class="flex flex-col gap-1 w-full">
+                        <div class="flex items-center gap-2 drop-shadow-sm w-full">
+                            <input v-model="setup.destination" class="text-lg font-bold tracking-wide bg-transparent border-b border-white/20 focus:border-white focus:outline-none w-full text-white placeholder-white/70 transition-colors" placeholder="旅程名稱...">
+                            <span class="text-xl shrink-0">{{ themeIcon }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="ph-fill ph-calendar text-white/70 text-xs"></i>
+                            <input type="date" v-model="setup.startDate" class="bg-transparent text-xs text-white font-bold border-none p-0 focus:ring-0 cursor-pointer opacity-90 font-mono">
+                            <button @click="showCloudModal=true" class="ml-2 px-2 py-0.5 rounded-full text-[9px] flex items-center gap-1 transition-colors border border-white/30" :class="syncStatus==='online'?'bg-green-400/30 text-green-50':(syncStatus==='syncing'?'bg-yellow-400/30 text-yellow-50':'bg-white/10 text-slate-200')">
+                                <i class="ph-bold" :class="syncStatus==='online'?'ph-cloud-check':(syncStatus==='syncing'?'ph-arrows-clockwise animate-spin':'ph-cloud-slash')"></i> {{ syncStatusText }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button @click="showCurrencyModal = true" class="bg-white/20 px-2 py-1.5 rounded-lg backdrop-blur-md border border-white/30 flex flex-col items-end justify-center min-w-[3.5rem] hover:bg-white/30 transition cursor-pointer shrink-0">
+                    <span class="text-[9px] font-bold opacity-80 flex items-center gap-1">1 {{ setup.currency }} <i class="ph-bold ph-caret-down text-[8px]"></i></span>
+                    <span class="text-[11px] font-bold font-mono">{{ Number(setup.rate || rates[setup.currency] || 1).toFixed(3) }}</span>
+                </button>
+            </div>
+
+            <!-- 日期滑動列 -->
+            <div v-if="['plan', 'map'].includes(viewMode)" class="flex overflow-x-auto hide-scroll space-x-2 snap-x relative z-10 pb-2 touch-pan-x transition-all duration-300">
+                <div v-for="(day, index) in days" :key="index"
+                     @click="currentDayIdx = index; viewMode = (viewMode === 'map' ? 'map' : 'plan')"
+                     class="snap-center shrink-0 flex flex-col items-center justify-center w-[4rem] h-14 rounded-xl cursor-pointer transition-all border-2 border-transparent relative overflow-hidden group"
+                     :class="currentDayIdx === index ? 'bg-white ' + textAccentClass + ' shadow-lg transform scale-105' : 'bg-white/20 hover:bg-white/30 text-white'">
+                    <span class="text-[9px] font-bold opacity-80 z-10">{{ getRealDate(index) }}</span>
+                    <span class="text-lg font-bold font-fredoka z-10">D{{ index + 1 }}</span>
+                    <div v-if="currentDayIdx === index" class="absolute bottom-0 w-full h-1 bg-current opacity-20"></div>
+                </div>
+                <button @click="addDay" class="shrink-0 w-10 h-14 rounded-xl border-2 border-dashed border-white/40 flex items-center justify-center text-white/70 hover:bg-white/10 transition cursor-pointer">
+                    <i class="ph-bold ph-plus"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 relative overflow-hidden w-full bg-[#f3f4f6]">
+            <div v-show="viewMode !== 'map'" class="h-full w-full overflow-y-auto scroll-smooth pb-24 scroll-touch">
+                
+                <!-- PLAN VIEW -->
+                <div v-if="viewMode === 'plan'" class="animate-fade-in">
+                    <!-- 天氣橫幅 -->
+                    <div class="bg-white mb-2 pb-2 shadow-sm border-b border-slate-100">
+                        <div class="px-4 py-3 flex items-center justify-between">
+                            <h3 class="font-bold text-slate-700 text-sm flex items-center gap-1"><i class="ph-fill ph-sun-horizon text-orange-400"></i> 當地天氣預報</h3>
+                            <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">依城市模擬</span>
+                        </div>
+                        <div class="flex overflow-x-auto hide-scroll px-4 gap-3 pb-1">
+                            <div v-for="(w, idx) in weatherForecast" :key="idx" 
+                                 class="flex flex-col items-center justify-center min-w-[3.5rem] p-2 rounded-xl border border-slate-100 bg-slate-50 shrink-0 transition-colors"
+                                 :class="{'ring-2 ring-blue-200 bg-blue-50': idx === currentDayIdx}">
+                                <span class="text-[10px] text-slate-400 font-medium mb-1">{{ w.date }}</span>
+                                <span class="text-2xl mb-1 filter drop-shadow-sm">{{ w.icon }}</span>
+                                <span class="text-[11px] font-bold text-slate-600">{{ w.temp }}</span>
+                                <span class="text-[9px] text-slate-400 w-12 text-center truncate">{{ w.city }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-4 py-2 space-y-4">
+                        <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-100 to-transparent opacity-50 rounded-bl-full pointer-events-none"></div>
+                            <div class="flex flex-col gap-3">
+                                <div class="flex justify-between items-start">
+                                    <div class="text-2xl font-bold text-slate-800">{{ getRealDate(currentDayIdx, true) }}</div>
+                                    <div class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 font-mono flex items-center gap-1">
+                                        {{ weatherForecast[currentDayIdx]?.icon }} {{ weatherForecast[currentDayIdx]?.temp }}
+                                    </div>
+                                </div>
+                                <input v-model="currentDay.title" class="text-lg font-bold text-slate-700 bg-transparent border-b border-slate-200 border-dashed pb-1 w-full focus:outline-none focus:border-blue-400 placeholder-slate-300" placeholder="輸入當日主題...">
+                                <div class="relative w-full">
+                                    <i class="ph-fill ph-map-pin absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                    <select v-model="currentDay.city" class="city-select w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg py-2 pl-8 pr-8 font-bold focus:ring-1 focus:ring-blue-400 outline-none">
+                                        <option value="" disabled>選擇城市 (影響天氣)...</option>
+                                        <optgroup v-for="(list, country) in cityDB" :key="country" :label="country">
+                                            <option v-for="(data, name) in list" :key="name" :value="name">{{ name }}</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 票券區 -->
+                        <div class="space-y-4">
+                            <div v-if="currentDay.flight" class="ticket-card rounded-2xl p-5 text-white shadow-lg relative group" :style="{ background: flightCardGradient }">
+                                <button @click="currentDay.flight=null" class="absolute top-2 right-2 opacity-50 hover:opacity-100 z-20"><i class="ph-bold ph-x"></i></button>
+                                <div class="flex justify-between items-center relative z-10">
+                                    <div class="text-center w-1/3"><input v-model="currentDay.flight.startTime" type="time" class="text-2xl font-bold bg-transparent border-none text-center text-white p-0 w-full font-mono leading-none drop-shadow-sm"><div class="text-[10px] opacity-80">起飛</div><input v-model="currentDay.flight.startAirport" class="text-base font-bold bg-transparent border-none text-center text-white w-full uppercase"></div>
+                                    <div class="flex flex-col items-center w-1/3"><i class="ph-fill ph-airplane text-2xl rotate-90 mb-1 text-yellow-300"></i><input v-model="currentDay.flight.number" class="text-[10px] bg-transparent border-none text-center text-white p-0 w-full font-mono opacity-90"></div>
+                                    <div class="text-center w-1/3"><input v-model="currentDay.flight.endTime" type="time" class="text-2xl font-bold bg-transparent border-none text-center text-white p-0 w-full font-mono leading-none drop-shadow-sm"><div class="text-[10px] opacity-80">抵達</div><input v-model="currentDay.flight.endAirport" class="text-base font-bold bg-transparent border-none text-center text-white w-full uppercase"></div>
+                                </div>
+                            </div>
+                            <div v-if="currentDay.hsr" class="bg-white rounded-lg shadow-sm border-b-2 border-slate-200 relative group overflow-hidden">
+                                <div class="hsr-orange-bar"></div>
+                                <button @click="currentDay.hsr=null" class="absolute top-3 right-3 text-slate-300 hover:text-red-400 z-20"><i class="ph-bold ph-x"></i></button>
+                                <div class="p-4 pt-3">
+                                    <div class="flex justify-between items-center mb-4"><div><span class="text-xs text-slate-400 mr-1">代號</span><input v-model="currentDay.hsr.code" class="text-sm font-bold text-slate-700 bg-transparent border-none p-0 w-24"></div></div>
+                                    <div class="flex justify-between items-center mb-4 px-2">
+                                        <div class="text-center w-1/3"><input v-model="currentDay.hsr.startStation" class="text-lg font-bold text-slate-800 bg-transparent border-none text-center w-full mb-1"><input v-model="currentDay.hsr.startTime" type="time" class="text-2xl font-bold text-slate-800 bg-transparent border-none text-center w-full"></div>
+                                        <div class="flex flex-col items-center"><span class="ph-bold ph-arrow-right text-orange-500 text-xl"></span></div>
+                                        <div class="text-center w-1/3"><input v-model="currentDay.hsr.endStation" class="text-lg font-bold text-slate-800 bg-transparent border-none text-center w-full mb-1"><input v-model="currentDay.hsr.endTime" type="time" class="text-2xl font-bold text-slate-800 bg-transparent border-none text-center w-full"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="!currentDay.flight || !currentDay.hsr" class="flex gap-2 justify-center py-2">
+                                <button v-if="!currentDay.flight" @click="addFlight" class="text-xs text-blue-400 border border-dashed border-blue-200 bg-blue-50 rounded-full px-3 py-1 hover:bg-blue-100 transition flex items-center gap-1 font-bold"><i class="ph-bold ph-airplane-tilt"></i> 新增機票</button>
+                                <button v-if="!currentDay.hsr" @click="addHSR" class="text-xs text-orange-500 border border-dashed border-orange-200 bg-orange-50 rounded-full px-3 py-1 hover:bg-orange-100 transition flex items-center gap-1 font-bold"><i class="ph-bold ph-train"></i> 新增鐵路票</button>
+                            </div>
+                        </div>
+
+                        <!-- Timeline -->
+                        <div class="relative pl-2 mt-2">
+                            <div v-for="(item, idx) in currentDay.items" :key="item.id || idx" class="timeline-item relative mb-4">
+                                <div class="timeline-track"></div>
+                                <div class="flex relative z-10">
+                                    <div class="w-16 flex flex-col items-center pt-2 relative">
+                                        <div class="w-full bg-[#f3f4f6] flex flex-col items-center pb-2 z-10">
+                                            <input v-model="item.time" type="time" class="text-lg font-bold text-slate-700 bg-transparent border-none p-0 text-center w-full leading-none">
+                                            <div class="rounded-full px-2 py-1 text-[10px] font-bold text-white w-10 text-center shadow-sm mt-1" :class="getCategoryColor(item.type)">{{ getIcon(item.type) }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 ml-2 bg-white border border-slate-100 rounded-2xl flex overflow-hidden min-h-[5.5rem] shadow-sm relative z-10">
+                                        <div class="flex-1 p-3">
+                                            <button @click="item.status = item.status === 'booked' ? 'planning' : 'booked'" class="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1" :class="item.status === 'booked' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-300'"><i class="ph-bold" :class="item.status === 'booked' ? 'ph-check' : 'ph-circle'"></i> {{ item.status === 'booked' ? 'OK' : 'Plan' }}</button>
+                                            <input v-model="item.activity" class="text-base font-bold text-slate-800 bg-transparent border-none p-0 w-[80%] mb-1 placeholder-slate-300" placeholder="行程標題">
+                                            <div class="flex items-center gap-1"><i class="ph-fill ph-map-pin text-slate-400 text-xs"></i><input v-model="item.location" class="text-xs text-slate-500 bg-transparent border-none p-0 w-full placeholder-slate-300" placeholder="地點"></div>
+                                            <!-- NEW: Google Map Link Input -->
+                                            <div class="flex items-center gap-1 mt-1"><i class="ph-bold ph-link text-slate-400 text-xs"></i><input v-model="item.mapUrl" class="text-xs text-blue-500 bg-transparent border-none p-0 w-full placeholder-slate-300" placeholder="Google Map 連結 (可選)"></div>
+                                            
+                                            <div class="flex items-center gap-1 mt-0.5"><i class="ph-fill ph-info text-yellow-400 text-xs"></i><input v-model="item.note" class="text-xs text-slate-400 bg-transparent border-none p-0 w-full placeholder-slate-300" placeholder="備註..."></div>
+                                            <div class="absolute bottom-2 right-2 flex gap-2">
+                                                <a v-if="item.location" :href="getMapLink(item)" target="_blank" class="text-blue-400 p-1"><i class="ph-bold ph-navigation-arrow"></i></a>
+                                                <button v-if="idx > 0" @click="moveItem(idx, -1)" class="text-slate-400 hover:text-slate-600 p-1"><i class="ph-bold ph-arrow-up"></i></button>
+                                                <button v-if="idx < currentDay.items.length - 1" @click="moveItem(idx, 1)" class="text-slate-400 hover:text-slate-600 p-1"><i class="ph-bold ph-arrow-down"></i></button>
+                                                <button @click="removeItem(idx)" class="text-slate-300 hover:text-red-400 p-1"><i class="ph-bold ph-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button @click="addItem" class="w-full py-4 border-2 border-dashed border-slate-300 text-slate-400 rounded-xl hover:bg-white hover:border-blue-300 hover:text-blue-500 transition font-bold text-sm ml-0 mt-2"><i class="ph-bold ph-plus-circle text-xl group-hover:scale-110 transition-transform"></i> 新增行程</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SHOPPING & MONEY -->
+                <div v-if="viewMode === 'shop'" class="p-4 animate-fade-in bg-[#f3f4f6]">
+                    <div class="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-2xl p-4 shadow-lg mb-4 relative overflow-hidden">
+                         <div class="absolute -right-4 -top-4 text-white/10 text-8xl"><i class="ph-fill ph-bag-simple"></i></div>
+                         <div class="relative z-10"><div class="flex justify-between items-start"><div><div class="text-[10px] uppercase opacity-80 mb-1">TOTAL BUDGET (TWD)</div><div class="text-3xl font-bold font-mono">NT$ {{ Math.round(shoppingStats.total).toLocaleString() }}</div></div><div class="text-right"><div class="text-[10px] uppercase opacity-80 mb-1">🎁 送禮預算</div><div class="text-lg font-bold font-mono text-yellow-300">NT$ {{ Math.round(shoppingStats.giftTotal).toLocaleString() }}</div></div></div></div>
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto hide-scroll mb-4 pb-1"><button @click="shopFilter = 'all'" :class="shopFilter==='all' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500'" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm">全部</button><button v-for="cat in shoppingCategories" :key="cat" @click="shopFilter = cat" :class="shopFilter===cat ? 'bg-purple-500 text-white' : 'bg-white text-slate-500'" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm">{{ cat }}</button></div>
+                    <div class="space-y-3 mb-6">
+                        <div v-for="(item, idx) in activeShoppingList" :key="item.id" class="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 flex p-3 relative group gap-3">
+                            <div class="w-20 h-20 bg-slate-100 rounded-lg relative overflow-hidden shrink-0 flex items-center justify-center text-slate-300"><img v-if="item.image" :src="item.image" class="w-full h-full object-cover"><i v-else class="ph-duotone ph-camera text-2xl"></i><label class="absolute inset-0 bg-black/0 hover:bg-black/30 transition flex items-center justify-center cursor-pointer"><input type="file" @change="(e) => updateItemImage(item, e)" class="hidden" accept="image/*"></label></div>
+                            <div class="flex-1 min-w-0 flex flex-col justify-between"><div class="flex justify-between items-start"><input v-model="item.name" class="font-bold text-slate-700 text-sm bg-transparent border-none p-0 w-full placeholder-slate-300" placeholder="商品名稱"><button @click="deleteShoppingItem(item.id)" class="text-slate-300 hover:text-red-400 p-1"><i class="ph-fill ph-x-circle"></i></button></div><div class="flex items-center gap-2"><div class="flex items-center gap-1 bg-slate-50 rounded px-1"><select v-model="item.currency" class="text-[10px] bg-transparent text-slate-400 border-none p-0 font-mono font-bold"><option v-for="c in currencyList" :key="c" :value="c">{{ c }}</option></select><input v-model="item.price" type="number" placeholder="單價" class="text-sm font-mono font-bold text-slate-700 bg-transparent border-none p-0 w-16"></div><span class="text-[10px] text-purple-500 font-bold">≈ NT$ {{ Math.round((item.price||0) * (item.currency!=='TWD'?rates[item.currency]||1:1) * item.quantity).toLocaleString() }}</span></div><div class="flex justify-between items-end mt-1"><select v-model="item.category" class="text-[10px] bg-slate-100 text-slate-500 rounded px-1 py-0.5 border-none"><option v-for="cat in shoppingCategories" :key="cat" :value="cat">{{ cat }}</option></select><div class="flex items-center gap-3"><div class="flex items-center bg-slate-50 rounded-lg border border-slate-200 px-1 h-7"><button @click="item.quantity > 1 ? item.quantity-- : null" class="w-6 flex items-center justify-center text-slate-400 hover:text-slate-600"><i class="ph-bold ph-minus text-xs"></i></button><span class="text-xs font-mono font-bold w-4 text-center">{{ item.quantity }}</span><button @click="item.quantity++" class="w-6 flex items-center justify-center text-slate-400 hover:text-slate-600"><i class="ph-bold ph-plus text-xs"></i></button></div><button @click="item.bought = true" class="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm hover:bg-green-600"><i class="ph-bold ph-check"></i></button></div></div></div>
+                        </div>
+                    </div>
+                    <button @click="addShoppingItem" class="w-full py-4 border-2 border-dashed border-purple-300 bg-purple-50 text-purple-400 rounded-xl hover:bg-purple-100 transition flex items-center justify-center gap-2 font-bold text-sm mb-8"><i class="ph-bold ph-plus-circle text-xl"></i> 新增商品</button>
+                    <div v-if="boughtShoppingList.length > 0" class="border-t border-slate-200 pt-4 mb-24"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-slate-600 text-sm flex items-center gap-2"><i class="ph-fill ph-bag-check"></i> 已購買紀錄</h3><span class="text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-600 font-mono">Total: NT$ {{ Math.round(boughtStats.total).toLocaleString() }}</span></div><div class="space-y-2 opacity-70"><div v-for="(item, idx) in boughtShoppingList" :key="item.id" class="bg-slate-100 rounded-lg p-2 flex items-center gap-3"><div class="w-10 h-10 bg-slate-200 rounded shrink-0 overflow-hidden"><img v-if="item.image" :src="item.image" class="w-full h-full object-cover grayscale"></div><div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-600 line-through">{{ item.name }}</div><div class="text-[10px] text-slate-400">{{ item.quantity }} x {{ item.price }}</div></div><button @click="item.bought = false" class="text-xs text-blue-400 underline p-2">復原</button></div></div></div>
+                </div>
+                <div v-if="viewMode === 'money'" class="p-4 animate-fade-in">
+                    <div class="bg-gradient-to-br from-slate-700 to-slate-800 text-white rounded-[24px] p-6 shadow-lg text-center mb-4 relative overflow-hidden"><div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div><div class="text-[10px] opacity-60 font-bold tracking-widest uppercase mb-1">TOTAL EXPENSE (TWD)</div><div class="text-4xl font-bold font-mono my-2 tracking-tight">NT$ {{ Math.round(totalExpenseInTWD).toLocaleString() }}</div><div class="text-[10px] opacity-40 font-mono">Base Rate: 1 {{ setup.currency }} ≈ {{ setup.rate }} TWD</div></div>
+                    <div v-if="settlementPlan.length > 0" class="bg-blue-50 rounded-xl p-3 mb-4 border border-blue-100"><div class="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-2">結帳建議 (TWD)</div><div v-for="(plan, idx) in settlementPlan" :key="idx" class="flex items-center justify-between text-xs bg-white p-2.5 rounded-lg shadow-sm"><span class="font-bold text-slate-700 flex items-center gap-2">{{ plan.from }} <i class="ph-bold ph-arrow-right text-blue-300 text-[10px]"></i> {{ plan.to }}</span><span class="font-mono font-bold text-blue-600">NT$ {{ plan.amount.toLocaleString() }}</span></div></div>
+                    <div class="space-y-3 mb-6"><div v-for="(exp, i) in expenses" :key="i" class="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg shadow-inner">{{ exp.payer === '鳳梨' ? '🍍' : '🍓' }}</div><div><div class="text-sm font-bold text-slate-800">{{ exp.item }}</div><div class="text-[10px] text-slate-400">{{ exp.payer }} 付款</div></div></div><div class="flex items-center gap-3"><div class="text-right"><div class="font-mono font-bold text-slate-800 text-sm">{{ getSymbol(exp.currency) }} {{ Number(exp.amount).toLocaleString() }}</div><div v-if="exp.currency !== 'TWD'" class="text-[10px] text-slate-400">≈ NT$ {{ Math.round(exp.amount * (rates[exp.currency] || 1)).toLocaleString() }}</div></div><button @click="expenses.splice(i,1)" class="text-slate-300 hover:text-red-400"><i class="ph-fill ph-x-circle"></i></button></div></div></div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mb-24"><div class="flex flex-col gap-3"><input v-model="newExpense.item" placeholder="項目名稱 (如: 晚餐)" class="w-full text-base font-bold bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-slate-200"><div class="flex gap-2"><input v-model="newExpense.amount" type="number" placeholder="金額" class="flex-1 text-base font-mono font-bold bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-slate-200"><select v-model="newExpense.currency" class="w-20 text-sm font-bold bg-slate-100 border-none rounded-xl px-2 py-3 text-center"><option v-for="c in currencyList" :key="c" :value="c">{{ c }}</option></select></div><div class="flex gap-2"><div class="flex-1 bg-slate-50 rounded-xl p-1 flex"><button v-for="p in ['鳳梨', '莓果']" :key="p" @click="newExpense.payer=p" class="flex-1 rounded-lg text-sm font-bold py-2 transition" :class="newExpense.payer===p ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'">{{ p }}</button></div><button @click="addExpense" class="w-12 bg-green-500 text-white rounded-xl flex items-center justify-center shadow-md active:scale-95"><i class="ph-bold ph-plus text-xl"></i></button></div></div></div>
+                </div>
+
+                <!-- MUST EAT -->
+                <div v-if="viewMode === 'must'" class="p-4 animate-fade-in bg-[#fdfaf2] min-h-full">
+                    <div class="bg-[#e95e5e] rounded-xl p-4 text-white shadow-lg mb-6 border-b-4 border-[#c0392b]"><h2 class="text-xl font-bold flex items-center gap-2 mb-1"><i class="ph-fill ph-star text-yellow-300"></i> 必吃必買情報</h2><p class="text-xs opacity-80">點擊 + 加入行程</p></div>
+                    <div class="space-y-3 mb-24"><div v-for="(item, idx) in mustList" :key="item.id" class="bg-white rounded-xl p-4 shadow-sm border border-slate-100 relative group"><div v-if="!item.editing"><div class="flex justify-between items-start mb-2"><h3 class="font-bold text-lg text-slate-800">{{ item.name }}</h3><span class="text-[10px] px-2 py-0.5 rounded text-white font-bold" :class="item.tag === '美食' ? 'bg-[#e95e5e]' : 'bg-blue-500'">{{ item.tag }}</span></div><div class="text-xs text-slate-500 mb-1"><i class="ph-bold ph-map-pin"></i> {{ item.location }}</div><div class="text-xs text-slate-400"><i class="ph-bold ph-clock"></i> {{ item.time }}</div></div><div v-else class="space-y-2 mb-2"><input v-model="item.name" class="w-full text-lg font-bold border-b border-slate-300 px-1" placeholder="名稱"><div class="flex gap-2"><select v-model="item.tag" class="text-xs border rounded px-1"><option>美食</option><option>景點</option><option>伴手禮</option></select><input v-model="item.location" class="flex-1 text-xs border-b px-1" placeholder="地點"></div><input v-model="item.time" class="w-full text-xs border-b px-1" placeholder="營業時間"></div><div class="flex justify-end gap-2 border-t border-slate-100 pt-3 mt-2"><button @click="item.editing = !item.editing" class="text-slate-300 hover:text-blue-500 px-2"><i class="ph-bold" :class="item.editing ? 'ph-check text-green-500 text-lg' : 'ph-pencil-simple'"></i></button><button class="text-slate-300 hover:text-red-500 px-2" @click="mustList.splice(idx, 1)"><i class="ph-bold ph-trash"></i></button><button v-if="!item.editing" @click="addToPlan(item)" class="bg-[#4a3b52] text-white w-8 h-8 rounded-lg flex items-center justify-center"><i class="ph-bold ph-plus"></i></button></div></div><button @click="addMustItem" class="w-full py-4 border-2 border-dashed border-slate-300 text-slate-400 rounded-xl hover:bg-white font-bold text-sm"><i class="ph-bold ph-plus"></i> 新增情報</button></div>
+                </div>
+            </div>
+
+            <!-- MAP VIEW -->
+            <div v-show="viewMode === 'map'" id="map-container">
+                <div id="map"></div>
+                <div class="absolute top-20 left-4 right-4 z-[500] pointer-events-none flex justify-center"><div class="bg-slate-800/80 backdrop-blur rounded-full px-4 py-2 shadow-lg inline-flex items-center gap-2 pointer-events-auto text-white"><span class="text-sm font-bold">{{ currentDay.date }}</span><div class="w-px h-3 bg-white/20"></div><span class="text-xs text-blue-200">{{ mapMarkersCount }} 個景點</span></div></div>
+                <!-- 浮窗卡片 (還原 v6 樣式) -->
+                <div v-if="selectedMapItem" class="absolute bottom-24 left-4 right-4 z-[500] bg-slate-800/95 backdrop-blur text-white rounded-2xl p-4 shadow-xl animate-[slide-up_0.3s_ease-out] flex flex-col gap-3 border border-white/10">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1"><span class="bg-blue-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border border-white/20">{{ selectedMapItem.index }}</span><span class="text-xs font-bold text-blue-200 font-mono tracking-wider">{{ selectedMapItem.time || '--:--' }}</span></div>
+                            <h3 class="text-lg font-bold tracking-wide">{{ selectedMapItem.activity }}</h3>
+                            <p class="text-xs text-slate-300 mt-1 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> {{ selectedMapItem.location }}</p>
+                        </div>
+                        <button @click="selectedMapItem = null" class="text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition"><i class="ph-bold ph-x text-lg"></i></button>
+                    </div>
+                    <a :href="getMapLink(selectedMapItem)" target="_blank" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-500 transition shadow-lg border-t border-white/10 mt-1"><i class="ph-bold ph-navigation-arrow"></i> Google Maps 導航</a>
+                </div>
+                <button @click="refreshMap" class="absolute bottom-24 right-4 bg-white px-3 py-1.5 rounded-lg shadow-md text-sm font-bold text-slate-600 z-[400] cursor-pointer flex items-center gap-1"><i class="ph-bold ph-arrows-clockwise"></i> 重整</button>
+            </div>
+        </main>
+
+        <!-- Bottom Tabs -->
+        <div class="bg-white/90 backdrop-blur border-t border-slate-100 p-2 flex justify-around items-center shrink-0 z-50 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <button @click="viewMode='plan'" :class="viewMode==='plan' ? textAccentClass : 'text-slate-400'" class="p-2 flex flex-col items-center gap-0.5 w-14 cursor-pointer"><i :class="viewMode==='plan' ? 'ph-fill' : 'ph-bold'" class="ph-calendar-check text-2xl"></i><span class="text-[9px] font-bold">行程</span></button>
+            <button @click="viewMode='map'" :class="viewMode==='map' ? textAccentClass : 'text-slate-400'" class="p-2 flex flex-col items-center gap-0.5 w-14 cursor-pointer"><i :class="viewMode==='map' ? 'ph-fill' : 'ph-bold'" class="ph-map-trifold text-2xl"></i><span class="text-[9px] font-bold">地圖</span></button>
+            <button @click="viewMode='must'" :class="viewMode==='must' ? textAccentClass : 'text-slate-400'" class="p-2 flex flex-col items-center gap-0.5 w-14 cursor-pointer"><i :class="viewMode==='must' ? 'ph-fill' : 'ph-bold'" class="ph-star text-2xl"></i><span class="text-[9px] font-bold">必吃</span></button>
+            <button @click="viewMode='shop'" :class="viewMode==='shop' ? textAccentClass : 'text-slate-400'" class="p-2 flex flex-col items-center gap-0.5 w-14 cursor-pointer"><i :class="viewMode==='shop' ? 'ph-fill' : 'ph-bold'" class="ph-bag text-2xl"></i><span class="text-[9px] font-bold">購物</span></button>
+            <button @click="viewMode='money'" :class="viewMode==='money' ? textAccentClass : 'text-slate-400'" class="p-2 flex flex-col items-center gap-0.5 w-14 cursor-pointer"><i :class="viewMode==='money' ? 'ph-fill' : 'ph-bold'" class="ph-currency-dollar text-2xl"></i><span class="text-[9px] font-bold">費用</span></button>
+        </div>
+        
+        <!-- Menu & Modals -->
+        <div v-if="showMenu" class="absolute inset-0 z-[10000] flex flex-col justify-end bg-black/40 backdrop-blur-sm" @click.self="showMenu=false">
+            <div class="bg-white rounded-t-[32px] p-6 pb-10 shadow-2xl animate-[slide-up_0.3s_ease-out] max-h-[85vh] flex flex-col">
+                <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 shrink-0"></div>
+                <div class="flex-1 overflow-y-auto pr-2">
+                    <h3 class="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider flex justify-between items-center">
+                        <span>我的旅程 ({{ tripList.length }})</span>
+                        <button @click="createNewTrip" class="text-blue-500 text-xs font-bold hover:underline cursor-pointer flex items-center gap-1"><i class="ph-bold ph-plus"></i> 建立新旅程</button>
+                    </h3>
+                    <div class="space-y-2 mb-6">
+                        <div v-for="trip in tripList" :key="trip.id" @click="switchTrip(trip.id)" class="p-3 rounded-xl border cursor-pointer flex justify-between items-center transition" :class="currentTripId === trip.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-200 hover:bg-slate-50'"><div><div class="font-bold text-slate-700">{{ trip.name }}</div><div class="text-[10px] text-slate-400">{{ trip.date }} • {{ trip.days }}天</div></div><div v-if="currentTripId === trip.id" class="text-blue-500"><i class="ph-fill ph-check-circle text-xl"></i></div><button v-else @click.stop="deleteTrip(trip.id)" class="text-slate-300 hover:text-red-500 p-2 cursor-pointer"><i class="ph-bold ph-trash"></i></button></div>
+                    </div>
+                    <h3 class="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">四季主題</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-6"><button @click="setTheme('pineapple')" :class="currentThemeKey==='pineapple'?'ring-2 ring-pink-400 bg-pink-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🍍❄️</span><div class="text-xs font-bold text-slate-600">鳳梨莓果</div></button><button @click="setTheme('spring')" :class="currentThemeKey==='spring'?'ring-2 ring-pink-400 bg-pink-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🌸</span><div class="text-xs font-bold text-slate-600">春日櫻花</div></button><button @click="setTheme('summer')" :class="currentThemeKey==='summer'?'ring-2 ring-sky-400 bg-sky-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">☀️</span><div class="text-xs font-bold text-slate-600">夏日陽光</div></button><button @click="setTheme('autumn')" :class="currentThemeKey==='autumn'?'ring-2 ring-orange-400 bg-orange-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🍁</span><div class="text-xs font-bold text-slate-600">秋日楓紅</div></button><button @click="setTheme('winter')" :class="currentThemeKey==='winter'?'ring-2 ring-indigo-400 bg-indigo-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">❄️</span><div class="text-xs font-bold text-slate-600">冬日極光</div></button></div>
+                    <div class="flex flex-col gap-3">
+                        <button @click="exportBackup" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"><i class="ph-bold ph-download-simple"></i> 下載備份</button>
+                        <label class="w-full py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-200"><i class="ph-bold ph-upload-simple"></i> 匯入備份<input type="file" @change="importBackup" class="hidden" accept=".json"></label>
+                        <button @click="restoreDefaultTrip" class="w-full py-3 bg-red-50 text-red-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer hover:bg-red-100 border border-red-100"><i class="ph-bold ph-arrows-counter-clockwise"></i> 重置此行程</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showCloudModal" class="absolute inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm" @click.self="showCloudModal=false">
+            <div class="bg-white w-4/5 max-w-sm rounded-2xl p-5 shadow-2xl">
+                <h3 class="font-bold text-lg mb-2 text-center flex items-center justify-center gap-2"><i class="ph-duotone ph-cloud-arrow-up text-blue-500"></i> 雲端同步 ID</h3>
+                <p class="text-xs text-slate-400 text-center mb-4">首次使用請點擊「切換/載入」啟動連線</p>
+                <div class="mb-4"><div class="flex gap-2"><input v-model="tempDocId" class="flex-1 bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono text-center font-bold text-slate-700 uppercase" placeholder="輸入 ID..."><button @click="copyDocId" class="bg-slate-100 text-slate-600 px-3 rounded-lg"><i class="ph-bold ph-copy"></i></button></div></div>
+                <button @click="changeDocId" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700"><i class="ph-bold ph-arrows-clockwise"></i> 切換 / 載入</button>
+            </div>
+        </div>
+        <div v-if="showCurrencyModal" class="absolute inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm" @click.self="showCurrencyModal=false">
+            <div class="bg-white w-4/5 max-w-sm rounded-2xl p-5 shadow-2xl">
+                <h3 class="font-bold text-lg mb-4 text-center">選擇匯率</h3>
+                <div class="grid grid-cols-2 gap-3 mb-4"><button v-for="c in currencyList" :key="c" @click="changeCurrency(c)" class="py-2 rounded-lg font-bold border transition cursor-pointer" :class="setup.currency === c ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'">{{ c }}</button></div>
+                <div class="mb-4"><label class="text-xs text-slate-400 block mb-1">自訂匯率 (1 {{setup.currency}} = ? TWD)</label><input v-model.number="rates[setup.currency]" type="number" step="0.001" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-center"></div>
+                <button @click="updateExchangeRate" class="w-full py-2 mb-2 bg-yellow-50 text-yellow-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-yellow-100 cursor-pointer border border-yellow-200"><i class="ph-bold" :class="isFetchingRates ? 'ph-spinner animate-spin' : 'ph-arrows-clockwise'"></i> 更新即時匯率</button>
+                <button @click="showCurrencyModal=false" class="w-full py-3 bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-600"><i class="ph-bold ph-check"></i> 完成</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // 您的專屬 Firebase Config
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // === 已填入您的金鑰 ===
+        const firebaseConfig = {
+            apiKey: "AIzaSyCGd-2_2Q3JOin3yZ-SJc99AxLEE74HRg4",
+            authDomain: "trip-ad3a9.firebaseapp.com",
+            projectId: "trip-ad3a9",
+            storageBucket: "trip-ad3a9.firebasestorage.app",
+            messagingSenderId: "506959940004",
+            appId: "1:506959940004:web:f5b0b8a3191e5e89a09931",
+            measurementId: "G-6JD6CJVBE9"
+        };
+
+        let db = null; let auth = null;
+        try { if (firebaseConfig.apiKey) { const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); } } catch(e) { console.warn("Firebase Init Skipped:", e); }
+
+        const { createApp, ref, computed, watch, onMounted, nextTick, reactive } = Vue;
+
+        const CITY_DB = {
+            "日本": { 
+                "札幌": { w:'snowy', lat:43.0 }, "小樽": { w:'snowy', lat:43.1 }, "旭川": { w:'cold', lat:43.7 }, 
+                "富良野": { w:'cold', lat:43.3 }, "定山溪": { w:'snowy', lat:42.9 }, "東京": { w:'mild', lat:35.6 }, 
+                "大阪": { w:'mild', lat:34.6 }, "京都": { w:'mild', lat:35.0 }, "沖繩": { w:'warm', lat:26.2 },
+                "福岡": { w:'mild', lat:33.5 } 
+            },
+            "台灣": { "台北": { w:'mild', lat:25.0 }, "高雄": { w:'warm', lat:22.6 }, "台中": { w:'mild', lat:24.1 } },
+            "韓國": { "首爾": { w:'cold', lat:37.5 }, "釜山": { w:'cold', lat:35.1 }, "大邱": { w:'cold', lat:35.8 } },
+            "泰國": { "曼谷": { w:'warm', lat:13.7 }, "清邁": { w:'warm', lat:18.7 } }
+        };
+        const FLAT_CITY_DB = Object.values(CITY_DB).reduce((acc, region) => ({...acc, ...region}), {});
+        
+        // [Map Fix] 擴充座標資料庫，包含 v6 的資料與新地點
+        const LOCATION_COORDS = { 
+            "新千歲機場": [42.7752, 141.6923], "札幌站": [43.0686, 141.3508], "札幌車站": [43.0686, 141.3508],
+            "大通公園": [43.0601, 141.3534], "札幌雪祭（大通會場）": [43.0601, 141.3534], "札幌雪祭": [43.0601, 141.3534],
+            "薄野": [43.0552, 141.3533], "薄野冰雕會場": [43.0552, 141.3533],
+            "TSUDOME": [43.1165, 141.3860], "TSUDOME 會場": [43.1165, 141.3860],
+            "Hotel Relief": [43.0532, 141.3562], "Hotel Relief Sapporo Susukino": [43.0532, 141.3562],
+            "旭川": [43.7706, 142.3649], "旭川站": [43.7628, 142.3585], 
+            "旭川永安國際飯店": [43.7656, 142.3596], "旭川站前永安國際飯店": [43.7656, 142.3596],
+            "四季彩之丘": [43.5358, 142.4578], "Ningle Terrace": [43.3235, 142.3551], "精靈露臺": [43.3235, 142.3551],
+            "富良野酒莊": [43.3448, 142.3705], "富良野奶酪工房": [43.3323, 142.3647], "青池": [43.4938, 142.6146],
+            "成吉思汗烤肉": [43.7667, 142.3653], "大黑屋": [43.7667, 142.3653],
+            "常磐公園": [43.7725, 142.3592], "聖誕禮物山滑雪場": [43.7690, 142.3167], "AEON Mall 旭川站前店": [43.7656, 142.3609],
+            "札幌王子飯店": [43.0563, 141.3417], "北海道大學": [43.0760, 141.3468], "北大博物館": [43.0760, 141.3468],
+            "狸小路": [43.0567, 141.3541], "小樽水族館": [43.2425, 141.0113], "小樽運河": [43.1995, 141.0028],
+            "六花亭": [43.1925, 141.0068], "有樂草庵": [42.9649, 141.1610], "定山溪有樂草庵": [42.9649, 141.1610],
+            "定山溪溫泉街": [42.9669, 141.1620], "札幌京王廣場飯店": [43.0658, 141.3463], "蟹本家": [43.0645, 141.3524],
+            "舊道廳": [43.0645, 141.3478], "時計台": [43.0626, 141.3536], "小樽音樂盒堂": [43.1917, 141.0076], "堺町商店街": [43.1932, 141.0070],
+            "出拔小路":[43.1966, 141.0035], "北一硝子三號館":[43.1925, 141.0076]
+        }; 
+        
+        const THEMES = {
+            pineapple: { header: 'bg-gradient-to-r from-yellow-400 via-orange-300 to-pink-500', textAccent: 'text-pink-500', flightCard: 'linear-gradient(135deg, #F59E0B 0%, #EC4899 100%)', icon: '🍍❄️', particleType: 'p-snow', particleClass: 'p-snow' },
+            spring: { header: 'bg-gradient-to-r from-pink-300 to-rose-400', textAccent: 'text-pink-500', flightCard: 'linear-gradient(135deg, #F9A8D4 0%, #F43F5E 100%)', icon: '🌸', particleType: 'p-flower', particleClass: 'p-flower' },
+            summer: { header: 'bg-gradient-to-r from-sky-400 to-cyan-500', textAccent: 'text-sky-600', flightCard: 'linear-gradient(135deg, #38BDF8 0%, #06B6D4 100%)', icon: '☀️', particleType: 'p-sun', particleClass: 'p-sun' },
+            autumn: { header: 'bg-gradient-to-r from-orange-400 to-amber-600', textAccent: 'text-orange-600', flightCard: 'linear-gradient(135deg, #FB923C 0%, #D97706 100%)', icon: '🍁', particleType: 'p-leaf', particleClass: 'p-leaf' },
+            winter: { header: 'bg-gradient-to-r from-blue-600 to-indigo-800', textAccent: 'text-indigo-600', flightCard: 'linear-gradient(135deg, #2563EB 0%, #4338CA 100%)', icon: '❄️', particleType: 'p-snow', particleClass: 'p-snow' }
+        };
+
+        const FULL_ITINERARY_V18 = [
+            { date: '2/8 (六)', shortDate: '02/08', title: '雪祭三大會場', city: '札幌', 
+              flight: { startTime: '05:55', startAirport: 'TPE', number: 'FD242', endTime: '10:40', endAirport: 'CTS' }, 
+              items: [
+                { time: '11:00', type: 'transport', activity: '抵達機場/寄放行李', location: '新千歲機場', note: '換周遊券', status: 'planning' },
+                { time: '13:00', type: 'spot', activity: '大通公園散步', location: '大通公園', note: '札幌雪祭大通會場', status: 'planning', mapUrl: 'https://maps.app.goo.gl/7YSPdYq8faawjT5D7?g_st=i' },
+                { time: '18:00', type: 'spot', activity: 'TSUDOME 會場', location: 'TSUDOME 會場', note: '冰滑梯、雪遊戲', status: 'planning' },
+                { time: '20:00', type: 'spot', activity: '薄野冰雕會場', location: '薄野冰雕會場', note: '夜間點燈', status: 'planning' },
+                { time: '22:00', type: 'hotel', activity: '入住飯店', location: 'Hotel Relief Sapporo Susukino', note: '位於薄野區', status: 'booked' }
+            ]},
+            { date: '2/9 (日)', shortDate: '02/09', title: '富良野美瑛一日遊', city: '旭川', 
+              hsr: { code: 'D2-JR', startStation: '札幌', startTime: '08:30', endStation: '旭川', endTime: '10:00', trainNo: 'Lilac', carNo: 'Free', seatNo: '-' },
+              items: [
+                { time: '10:30', type: 'hotel', activity: '寄放行李', location: '旭川站前永安國際飯店', note: '站前', status: 'booked' },
+                { time: '11:30', type: 'spot', activity: '精靈露臺', location: '精靈露臺', note: '必去', status: 'planning' },
+                { time: '13:00', type: 'spot', activity: '富良野酒莊', location: '富良野酒莊', note: '品酒', status: 'planning' },
+                { time: '14:30', type: 'spot', activity: '富良野奶酪工房', location: '富良野奶酪工房', note: '手工起司', status: 'planning' },
+                { time: '16:00', type: 'spot', activity: '四季彩之丘', location: '四季彩之丘', note: '丘陵雪景', status: 'planning' },
+                { time: '19:00', type: 'food', activity: '成吉思汗烤肉', location: '成吉思汗烤肉', note: '晚餐', status: 'planning' },
+                { time: '20:30', type: 'spot', activity: '常磐公園散步', location: '常磐公園', note: '雪景非常美', status: 'planning' },
+                { time: '21:30', type: 'spot', activity: '逛便利商店', location: 'Seicomart', note: '買炸雞與牛奶', status: 'planning' }
+            ]},
+            { date: '2/10 (一)', shortDate: '02/10', title: '滑雪與市區漫遊', city: '旭川', items: [
+                { time: '09:00', type: 'transport', activity: '接駁車往滑雪場', location: '旭川站', note: '10:00前搭乘', status: 'planning' },
+                { time: '10:00', type: 'spot', activity: '聖誕禮物山滑雪場', location: '聖誕禮物山滑雪場', note: '租雪具¥4500, 纜車¥1300', status: 'booked' },
+                { time: '14:30', type: 'transport', activity: '返回市區', location: '旭川站', note: '飯店休息', status: 'planning' },
+                { time: '16:00', type: 'shop', activity: 'AEON Mall 逛街', location: 'AEON Mall 旭川站前店', note: '晚餐自由活動', status: 'planning' },
+                { time: '21:00', type: 'hotel', activity: '休息', location: '旭川站前永安國際飯店', note: '連泊', status: 'booked' }
+            ]},
+            { date: '2/11 (二)', shortDate: '02/11', title: '北海道大學散策', city: '札幌', 
+              hsr: { code: 'D4-JR', startStation: '旭川', startTime: '10:00', endStation: '札幌', endTime: '11:30', trainNo: 'Kamui', carNo: 'Free', seatNo: '-' },
+              items: [
+                { time: '12:00', type: 'hotel', activity: 'Check-in/寄放行李', location: '札幌王子飯店', note: '已預訂', status: 'booked' },
+                { time: '14:00', type: 'spot', activity: '北海道大學', location: '北海道大學', note: '冬季校園雪景', status: 'planning' },
+                { time: '15:30', type: 'spot', activity: '北大博物館', location: '北大博物館', note: '免費參觀', status: 'planning' },
+                { time: '18:00', type: 'food', activity: '晚餐 (湯咖哩/壽司)', location: '札幌車站', note: '未定', status: 'planning' },
+                { time: '21:00', type: 'hotel', activity: '休息', location: '札幌王子飯店', note: '', status: 'booked' }
+            ]},
+            { date: '2/12 (三)', shortDate: '02/12', title: '小樽浪漫之旅', city: '小樽', 
+              hsr: { code: 'JR-LOCAL', startStation: '札幌', startTime: '09:00', endStation: '小樽', endTime: '09:45', trainNo: 'Rapid', carNo: '-', seatNo: '-' },
+              items: [
+                { time: '10:30', type: 'spot', activity: '小樽水族館', location: '小樽水族館', note: '1.5-2hr', status: 'planning' },
+                { time: '13:00', type: 'spot', activity: '堺町商店街散策', location: '堺町商店街', note: '音樂盒堂, LeTAO, 北菓樓', status: 'planning' },
+                { time: '15:00', type: 'food', activity: '下午茶點心', location: '六花亭', note: 'SNOOPY茶屋, 米飛兔', status: 'planning' },
+                { time: '17:30', type: 'spot', activity: '小樽運河夜景', location: '小樽運河', note: '出拔小路', status: 'planning' },
+                { time: '20:30', type: 'transport', activity: '返回札幌', location: '札幌王子飯店', note: '', status: 'booked' }
+            ]},
+            { date: '2/13 (四)', shortDate: '02/13', title: '定山溪溫泉之旅', city: '定山溪', items: [
+                { time: '11:30', type: 'food', activity: '市區午餐', location: '札幌市區', note: '店家未定', status: 'planning' },
+                { time: '15:00', type: 'transport', activity: '接駁巴士往定山溪', location: '札幌站', note: '需預約', status: 'booked' },
+                { time: '16:30', type: 'hotel', activity: '入住 有樂草庵', location: '定山溪有樂草庵', note: '房內私人溫泉', status: 'booked' },
+                { time: '17:30', type: 'spot', activity: '溫泉街散步', location: '定山溪溫泉街', note: '', status: 'planning' },
+                { time: '19:00', type: 'food', activity: '懷石料理晚餐', location: '定山溪有樂草庵', note: '旅館內', status: 'booked' }
+            ]},
+            { date: '2/14 (五)', shortDate: '02/14', title: '市區散步與螃蟹', city: '札幌', items: [
+                { time: '10:00', type: 'transport', activity: '接駁巴士回札幌', location: '札幌站', note: '', status: 'planning' },
+                { time: '11:30', type: 'spot', activity: '舊道廳', location: '舊道廳', note: '紅磚廳舍', status: 'planning' },
+                { time: '12:30', type: 'spot', activity: '札幌時計台', location: '時計台', note: '地標打卡', status: 'planning' },
+                { time: '14:30', type: 'shop', activity: '大通地下街購物', location: '大通公園', note: '百貨公司', status: 'planning' },
+                { time: '17:00', type: 'hotel', activity: '入住 京王廣場飯店', location: '札幌京王廣場飯店', note: '已預訂', status: 'booked' },
+                { time: '19:00', type: 'food', activity: '螃蟹大餐', location: '蟹本家', note: '螃蟹本家/蟹將軍', status: 'booked' }
+            ]},
+            { date: '2/15 (六)', shortDate: '02/15', title: '返程與最後採購', city: '千歲', 
+              flight: { startTime: '14:00', startAirport: 'CTS', number: 'FD243', endTime: '17:55', endAirport: 'TPE' },
+              items: [
+                { time: '09:30', type: 'hotel', activity: '飯店退房', location: '札幌京王廣場飯店', note: '', status: 'planning' },
+                { time: '10:00', type: 'transport', activity: '巴士前往機場', location: '新千歲機場', note: '預留時間', status: 'planning' },
+                { time: '11:30', type: 'shop', activity: '伴手禮採購', location: '新千歲機場', note: 'Royce, 六花亭, 白色戀人', status: 'planning' },
+                { time: '12:00', type: 'transport', activity: '登機手續', location: '新千歲機場', note: 'FD243 14:00 起飛', status: 'planning' }
+            ]}
+        ];
+
+        createApp({
+            setup() {
+                const viewMode = ref('plan');
+                const currentDayIdx = ref(0);
+                const showMenu = ref(false);
+                const showCurrencyModal = ref(false);
+                const showCloudModal = ref(false);
+                const isSaving = ref(false);
+                const isFetchingRates = ref(false);
+                const mapMarkersCount = ref(0); 
+                const selectedMapItem = ref(null);
+                
+                const syncStatus = ref('offline');
+                const docId = ref('trip_default');
+                const tempDocId = ref('');
+                const tripList = ref([]);
+                const currentTripId = ref('trip_default');
+                let unsubscribeSnapshot = null;
+
+                const setup = ref({ destination: '北海道雪祭八日遊', theme: 'pineapple', currency: 'JPY', rate: 0.215, startDate: '2026-02-08' });
+                const days = ref(JSON.parse(JSON.stringify(FULL_ITINERARY_V18)));
+                
+                const expenses = ref([
+                    {item:'交通總計(人)', amount:13650, payer:'鳳梨', currency:'JPY'},
+                    {item:'聖誕禮物山滑雪', amount:5800, payer:'鳳梨', currency:'JPY'},
+                    {item:'定山溪住宿(人)', amount:31000, payer:'鳳梨', currency:'JPY'}
+                ]);
+                
+                const shoppingList = ref([{id:1, name:'白色戀人', price:800, currency:'JPY', quantity:3, category:'伴手禮', bought:false, note:'買大盒的', image:''}]);
+                const mustList = ref([{id:1, name:'湯咖哩', tag:'美食', location:'札幌', time:'11:00', editing: false}]);
+                const memo = ref('機票台幣約 14,000');
+                const newExpense = ref({item:'', amount:'', payer:'鳳梨', currency:'JPY'});
+
+                const currencyList = ['JPY', 'TWD', 'USD', 'EUR', 'CNY', 'KRW'];
+                const rates = reactive({ 'JPY': 0.215, 'TWD': 1, 'USD': 32.5, 'EUR': 35, 'CNY': 4.5, 'KRW': 0.024 });
+                const shopFilter = ref('all');
+                const shoppingCategories = ['生活用品', '藥妝', '伴手禮', '送禮'];
+
+                const currentThemeKey = computed(() => setup.value.theme || 'pineapple');
+                const themeConf = computed(() => THEMES[currentThemeKey.value]);
+                const headerClasses = computed(() => themeConf.value.header);
+                const textAccentClass = computed(() => themeConf.value.textAccent);
+                const flightCardGradient = computed(() => themeConf.value.flightCard);
+                const themeIcon = computed(() => themeConf.value.icon);
+                const syncStatusText = computed(() => ({'syncing':'同步中', 'online':'連線中', 'offline':'離線'}[syncStatus.value]));
+                const currentDay = computed(() => days.value[currentDayIdx.value] || days.value[0]);
+
+                const getRealDateObj = (idx) => { const d = new Date(setup.value.startDate); d.setDate(d.getDate() + idx); return d; };
+                const getRealDate = (idx, full=false) => { const d = getRealDateObj(idx); const m=d.getMonth()+1, dt=d.getDate(), w=['日','一','二','三','四','五','六'][d.getDay()]; return full ? `${m}/${dt} (${w})` : `${m}/${dt}`; };
+                
+                const weatherForecast = computed(() => days.value.map((d, i) => {
+                    const dateObj = getRealDateObj(i);
+                    const m = dateObj.getMonth() + 1;
+                    let icon='☀️', min=20, max=28;
+                    const cityInfo = FLAT_CITY_DB[d.city] || { w:'mild' };
+                    const type = cityInfo.w;
+                    const isWinter = (m>=12||m<=2);
+                    const isSummer = (m>=6&&m<=8);
+                    if(type==='snowy') { 
+                        if(isWinter) { min=-8; max=-1; icon='❄️'; }
+                        else if(isSummer) { min=18; max=26; icon='☀️'; }
+                        else { min=10; max=18; icon='🌥️'; }
+                    } else if(type==='cold') { 
+                        if(isWinter) { min=-8; max=2; icon='🌨️'; }
+                        else if(isSummer) { min=22; max=30; icon='☀️'; }
+                        else { min=12; max=22; icon='🌥️'; }
+                    } else if(type==='mild') { 
+                        if(isWinter) { min=5; max=12; icon='🌥️'; }
+                        else if(isSummer) { min=26; max=34; icon='☀️'; }
+                        else { min=18; max=25; icon='☀️'; }
+                    } else if(type==='warm') { 
+                        min=25; max=32; icon='☀️';
+                        if(m>=5 && m<=9) icon='🌧️'; 
+                    }
+                    return { date: getRealDate(i), icon, temp: `${min}°~${max}°`, city: d.city || '' };
+                }));
+
+                const activeShoppingList = computed(() => shoppingList.value.filter(i => !i.bought && (shopFilter.value==='all' || i.category===shopFilter.value)));
+                const boughtShoppingList = computed(() => shoppingList.value.filter(i => i.bought));
+                const shoppingStats = computed(() => { 
+                    let total=0, giftTotal=0; 
+                    shoppingList.value.forEach(i => { 
+                        if(!i.bought) {
+                            const val = (i.price||0)*(i.quantity||1)*(i.currency!=='TWD'?rates[i.currency]||1:1);
+                            total += val; 
+                            if(i.category==='送禮') giftTotal += val; 
+                        }
+                    }); 
+                    return {total, giftTotal}; 
+                });
+                const boughtStats = computed(() => { 
+                    let total=0; 
+                    boughtShoppingList.value.forEach(i => { const val = (i.price||0)*(i.quantity||1)*(i.currency!=='TWD'?rates[i.currency]||1:1); total += val; });
+                    return {total};
+                });
+                const totalExpenseInTWD = computed(() => expenses.value.reduce((sum, e) => sum + (Number(e.amount)*(rates[e.currency]||1)), 0));
+                
+                const participants = ['鳳梨', '莓果'];
+                const settlementPlan = computed(() => {
+                    if (totalExpenseInTWD.value === 0) return [];
+                    const map = {}; participants.forEach(p => map[p]=0);
+                    expenses.value.forEach(e => { if(map[e.payer]!==undefined) map[e.payer] += (Number(e.amount)*(rates[e.currency]||1)); });
+                    const avg = totalExpenseInTWD.value / participants.length;
+                    const diff = map['鳳梨'] - avg;
+                    return diff > 1 ? [{from:'莓果', to:'鳳梨', amount:Math.round(diff)}] : (diff < -1 ? [{from:'鳳梨', to:'莓果', amount:Math.round(-diff)}] : []);
+                });
+
+                const setTheme = (k) => setup.value.theme = k;
+                const changeCurrency = (c) => setup.value.currency = c;
+                const getIcon = (t) => ({flight:'✈️', transport:'🚆', spot:'🏔️', food:'🍜', shop:'🛍️', hotel:'🏨'}[t] || '📍');
+                const getCategoryColor = (t) => ({flight:'bg-blue-400', transport:'bg-teal-400', spot:'bg-rose-400', food:'bg-amber-400', shop:'bg-purple-400', hotel:'bg-indigo-400'}[t] || 'bg-gray-400');
+                const getSymbol = (c) => ({'JPY':'¥', 'TWD':'NT$', 'USD':'$', 'EUR':'€', 'KRW':'₩', 'CNY':'¥', 'THB':'฿'}[c] || '$');
+                
+                // [Map Link Fix] 支援自訂 URL
+                const getMapLink = (item) => {
+                    if (item.mapUrl) return item.mapUrl;
+                    const loc = typeof item === 'string' ? item : item.location;
+                    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
+                };
+
+                const getParticleStyle = (type) => { 
+                    let s = { left: Math.random()*100+'vw', animationDuration: Math.random()*5+5+'s', animationDelay: Math.random()*5+'s' };
+                    if(type==='p-snow') { s.width = s.height = Math.random()*5+5+'px'; }
+                    else if(type==='p-flower') { s.width = s.height = Math.random()*8+8+'px'; }
+                    else if(type==='p-sun') { s.width = s.height = Math.random()*20+10+'px'; s.left = Math.random()*90+5+'vw'; s.top = Math.random()*90+5+'vh'; }
+                    else if(type==='p-leaf') { s.width = Math.random()*10+10+'px'; s.height = Math.random()*10+10+'px'; }
+                    return s; 
+                };
+
+                const updateExchangeRate = async () => {
+                    isFetchingRates.value = true;
+                    try {
+                        const res = await fetch(`https://open.er-api.com/v6/latest/${setup.value.currency}`);
+                        const data = await res.json();
+                        if (data && data.rates && data.rates.TWD) {
+                            rates[setup.value.currency] = 1; 
+                            setup.value.rate = data.rates.TWD;
+                        }
+                    } catch (e) { console.error('Rate update failed'); }
+                    isFetchingRates.value = false;
+                };
+
+                const addItem = () => currentDay.value.items.push({time:'', type:'spot', activity:'', location:'', note:'', mapUrl:'', status:'planning'});
+                const removeItem = (i) => currentDay.value.items.splice(i,1);
+                const moveItem = (idx, direction) => {
+                    const items = currentDay.value.items;
+                    const newIdx = idx + direction;
+                    if (newIdx >= 0 && newIdx < items.length) {
+                        [items[idx], items[newIdx]] = [items[newIdx], items[idx]];
+                    }
+                };
+                const addFlight = () => { currentDay.value.flight = {startTime:'09:00', startAirport:'TPE', endTime:'14:00', endAirport:'CTS', number:'BR123'}; };
+                const addHSR = () => { currentDay.value.hsr = { code: '00000000', startStation: '起站', startTime: '10:00', endStation: '訖站', endTime: '12:00', trainNo: '000', carNo: '1', seatNo: '1A' }; };
+                const addDay = () => days.value.push({city:'', items:[]});
+                const addExpense = () => { if(newExpense.value.item) { expenses.value.push({...newExpense.value}); newExpense.value.item=''; newExpense.value.amount=''; }};
+                const addShoppingItem = () => shoppingList.value.push({id:Date.now(), name:'', price:null, currency:setup.value.currency, quantity:1, category:'生活用品', bought:false, image:'', note:''});
+                const deleteShoppingItem = (id) => { const idx = shoppingList.value.findIndex(i=>i.id===id); if(idx!==-1) shoppingList.value.splice(idx,1); };
+                const updateItemImage = (item, e) => { const file = e.target.files[0]; if(file) { const reader = new FileReader(); reader.onload = (ev) => item.image = ev.target.result; reader.readAsDataURL(file); }};
+                const addToPlan = (item) => { currentDay.value.items.push({time:'', type:'food', activity:item.name, location:item.location, note:item.tag, mapUrl:'', status:'planning'}); alert('已加入！'); };
+                const addMustItem = () => mustList.value.push({id:Date.now(), name:'', tag:'美食', location:'', time:'', editing: true});
+
+                // Trip Management
+                const STORAGE_KEY = 'trip_v18_final_data';
+                const saveAll = () => {
+                    isSaving.value = true;
+                    const idx = tripList.value.findIndex(t => t.id === currentTripId.value);
+                    const currentData = { setup: setup.value, daysData: days.value, expenses: expenses.value, shoppingList: shoppingList.value, mustList: mustList.value, memo: memo.value };
+                    if (idx !== -1) { tripList.value[idx] = { id: currentTripId.value, name: setup.value.destination, date: setup.value.startDate, days: days.value.length, data: currentData }; }
+                    else { tripList.value.push({ id: currentTripId.value, name: setup.value.destination, date: setup.value.startDate, days: days.value.length, data: currentData }); }
+                    
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(tripList.value));
+                    localStorage.setItem(STORAGE_KEY+'_last', currentTripId.value);
+                    
+                    if (syncStatus.value === 'online' && db) { // Cloud Sync
+                        setDoc(doc(db, "trips", docId.value), { ...currentData, lastUpdated: new Date() }).catch(console.error);
+                    }
+                    setTimeout(() => isSaving.value = false, 500);
+                };
+
+                const switchTrip = (id) => {
+                    const t = tripList.value.find(x => x.id === id);
+                    if (t) {
+                        currentTripId.value = id; docId.value = id;
+                        const d = t.data;
+                        setup.value = d.setup; days.value = d.daysData; expenses.value = d.expenses; 
+                        shoppingList.value = d.shoppingList; mustList.value = d.mustList; memo.value = d.memo;
+                        currentDayIdx.value = 0; showMenu.value = false;
+                    }
+                };
+                const createNewTrip = () => {
+                    const newId = 'trip_' + Date.now();
+                    tripList.value.unshift({ id: newId, name: '新旅程', date: new Date().toISOString().split('T')[0], days: 1, data: { setup: { ...setup.value, destination:'新旅程' }, daysData: [{city:'台北', items:[]}], expenses:[], shoppingList:[], mustList:[], memo:'' } });
+                    switchTrip(newId);
+                };
+                const deleteTrip = (id) => { if(confirm('確定刪除？')) { tripList.value = tripList.value.filter(t => t.id !== id); if(tripList.value.length === 0) restoreDefaultTrip(); else if(currentTripId.value === id) switchTrip(tripList.value[0].id); saveAll(); }};
+                const restoreDefaultTrip = () => { 
+                    const def = { id: 'trip_def_'+Date.now(), name: '北海道雪祭', date: '2026-02-08', days: 8, data: { setup: { ...setup.value, startDate:'2026-02-08', theme:'pineapple' }, daysData: JSON.parse(JSON.stringify(FULL_ITINERARY_V18)), expenses:[], shoppingList:[], mustList:[], memo:'' }};
+                    tripList.value = [def]; switchTrip(def.id); 
+                };
+                
+                // Cloud
+                const changeDocId = () => { if(tempDocId.value && db) { docId.value = tempDocId.value; startAuth(); showCloudModal.value=false; }};
+                const copyDocId = () => { navigator.clipboard.writeText(docId.value); alert('已複製ID'); };
+                const startAuth = () => {
+                    if(!auth) { alert('請填寫 Firebase Config'); return; }
+                    signInAnonymously(auth).then(() => {
+                        syncStatus.value = 'syncing';
+                        if(unsubscribeSnapshot) unsubscribeSnapshot();
+                        unsubscribeSnapshot = onSnapshot(doc(db, "trips", docId.value), (snap) => {
+                            if(snap.exists() && !snap.metadata.hasPendingWrites) {
+                                const d = snap.data();
+                                setup.value = d.setup; days.value = d.daysData; expenses.value = d.expenses; shoppingList.value = d.shoppingList; mustList.value = d.mustList; memo.value = d.memo;
+                            }
+                            syncStatus.value = 'online';
+                        });
+                    }).catch(e => { console.error(e); syncStatus.value = 'offline'; });
+                };
+
+                const exportBackup = () => { const b = new Blob([JSON.stringify(tripList.value)],{type:'application/json'}); const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='trips.json'; a.click(); };
+                const importBackup = (e) => { const f = e.target.files[0]; if(f) { const r=new FileReader(); r.onload=ev=>{ try{ tripList.value=JSON.parse(ev.target.result); switchTrip(tripList.value[0].id); alert('匯入成功'); }catch{alert('格式錯誤');}}; r.readAsText(f); }};
+
+                // Map
+                const mapInstance = ref(null), markersLayer = ref(null), polylineLayer = ref(null);
+                const getLatLng = (locationName) => {
+                    if (LOCATION_COORDS[locationName]) return LOCATION_COORDS[locationName];
+                    // Fuzzy match
+                    for (let key in LOCATION_COORDS) { if (locationName.includes(key)) return LOCATION_COORDS[key]; }
+                    // Fallback to Sapporo center random
+                    const base = [43.0618, 141.3545]; return [base[0] + (Math.random()-0.5)*0.05, base[1] + (Math.random()-0.5)*0.05];
+                };
+
+                const refreshMap = () => {
+                    if (!mapInstance.value) {
+                        const el = document.getElementById('map'); if(!el) return;
+                        mapInstance.value = L.map('map', {zoomControl:false}); L.control.zoom({position:'topright'}).addTo(mapInstance.value);
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(mapInstance.value);
+                        markersLayer.value = L.layerGroup().addTo(mapInstance.value);
+                        polylineLayer.value = L.layerGroup().addTo(mapInstance.value);
+                        mapInstance.value.on('click', () => selectedMapItem.value = null);
+                    }
+                    setTimeout(() => {
+                        mapInstance.value.invalidateSize(); markersLayer.value.clearLayers(); polylineLayer.value.clearLayers();
+                        const pts = []; let count = 0;
+                        currentDay.value.items.forEach(i => {
+                            if(i.location) {
+                                count++;
+                                const latlng = getLatLng(i.location);
+                                pts.push(latlng);
+                                const itemData = { ...i, index: count };
+                                L.marker(latlng, {icon: L.divIcon({className:'custom-div-icon', html:`<div class='marker-circle'>${count}</div>`, iconSize:[28,28]})})
+                                 .addTo(markersLayer.value)
+                                 .on('click', (e) => {
+                                     L.DomEvent.stopPropagation(e);
+                                     selectedMapItem.value = itemData; 
+                                     mapInstance.value.panTo(latlng);
+                                 });
+                            }
+                        });
+                        mapMarkersCount.value = count; 
+                        
+                        if(pts.length > 0) {
+                            L.polyline(pts, {color:'#3b82f6', weight:4, opacity:0.7, dashArray:'10, 10'}).addTo(polylineLayer.value);
+                            mapInstance.value.fitBounds(L.latLngBounds(pts), {padding:[50,50]});
+                        } else {
+                            mapInstance.value.setView([43.06, 141.35], 10);
+                        }
+                    }, 200);
+                };
+
+                // Lifecycle
+                onMounted(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('app').style.display = 'flex';
+                    updateExchangeRate();
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if(saved) { try { tripList.value = JSON.parse(saved); switchTrip(localStorage.getItem(STORAGE_KEY+'_last') || tripList.value[0].id); } catch { restoreDefaultTrip(); } } else { restoreDefaultTrip(); }
+                    
+                    if(firebaseConfig.apiKey) startAuth();
+                    watch([days, expenses, shoppingList, mustList, setup, memo], () => { saveAll(); }, {deep:true});
+                    watch(viewMode, (v) => { if(v==='map') nextTick(refreshMap); });
+                    watch(currentDayIdx, () => { if(viewMode.value==='map') refreshMap(); });
+                });
+
+                return {
+                    viewMode, currentDayIdx, showMenu, showCurrencyModal, showCloudModal, isSaving, isFetchingRates,
+                    setup, days, expenses, shoppingList, mustList, memo, newExpense, tripList, currentTripId,
+                    themeConf, headerClasses, textAccentClass, flightCardGradient, themeIcon,
+                    weatherForecast, currentDay, rates, currencyList,
+                    activeShoppingList, shoppingStats, shopFilter, shoppingCategories, totalExpenseInTWD, settlementPlan,
+                    syncStatus, syncStatusText, tempDocId, docId, cityDB: CITY_DB, boughtShoppingList, boughtStats,
+                    getRealDate, getIcon, getCategoryColor, getSymbol, getMapLink, getParticleStyle,
+                    setTheme, changeCurrency, updateExchangeRate,
+                    addItem, removeItem, moveItem, addDay, addExpense, addShoppingItem, deleteShoppingItem, updateItemImage, addToPlan, addMustItem,
+                    addFlight, addHSR, // Exported to template
+                    createNewTrip, switchTrip, deleteTrip, restoreDefaultTrip, exportBackup, importBackup,
+                    changeDocId, copyDocId, refreshMap, mapMarkersCount, selectedMapItem
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
+
