@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>北海道雪祭八日遊 v18.6 (Emoji更新)</title>
+
+    <!-- 核心套件 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Leaflet 地圖 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 基礎設定 --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #334155; margin: 0; padding: 0; overflow: hidden; height: 100dvh; width: 100vw; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 載入畫面 */
+        #loading { position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: center; align-items: center; background: #f8fafc; transition: opacity 0.5s; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- 四季動態粒子 --- */
+        .particle-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; overflow: hidden; }
+        .particle { position: absolute; opacity: 0; }
+        @keyframes fall { 0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(110vh) translateX(20px) rotate(360deg); opacity: 0.6; } }
+        @keyframes float-up { 0% { transform: translateY(110vh) scale(0.5); opacity: 0; } 30% { opacity: 0.6; } 100% { transform: translateY(-10vh) scale(1.2); opacity: 0; } }
+
+        /* 粒子樣式 */
+        .p-snow { background: #fff; border-radius: 50%; box-shadow: 0 0 4px white; animation: fall linear infinite; }
+        .p-flower { background: radial-gradient(circle, #fbcfe8 0%, #f472b6 100%); border-radius: 100% 0 100% 0; animation: fall linear infinite; }
+        .p-sun { background: radial-gradient(circle, rgba(253,224,71,0.8) 0%, rgba(253,224,71,0) 70%); border-radius: 50%; animation: float-up linear infinite; }
+        .p-leaf { background: linear-gradient(45deg, #f59e0b, #ef4444); border-radius: 2px 20px; animation: fall linear infinite; }
+
+        /* --- UI 元件 --- */
+        .ticket-card {
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            mask: radial-gradient(circle at 0 50%, transparent 10px, black 11px), radial-gradient(circle at 100% 50%, transparent 10px, black 11px);
+            -webkit-mask: radial-gradient(circle at 0 50%, transparent 10px, black 11px), radial-gradient(circle at 100% 50%, transparent 10px, black 11px);
+            mask-composite: intersect; -webkit-mask-composite: source-in;
+        }
+        .hsr-orange-bar { height: 6px; width: 100%; background-color: #ff6b00; }
+
+        .timeline-track { position: absolute; left: 24px; top: 35px; bottom: -20px; width: 2px; background-color: #e2e8f0; z-index: 0; }
+        .timeline-item:last-child .timeline-track { display: none; }
+        .scroll-touch { -webkit-overflow-scrolling: touch; }
+
+        /* Map Styles */
+        #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: #e2e8f0; }
+        #map { width: 100%; height: 100%; }
+        /* 復刻 v6 的 marker 樣式 */
+        .custom-div-icon { background: transparent; border: none; }
+        .marker-circle { 
+            width: 28px; height: 28px; border-radius: 50%; 
+            background: #2563eb; color: white; 
+            font-weight: bold; font-size: 14px; 
+            display: flex; align-items: center; justify-content: center; 
+            border: 2px solid white; 
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.4); 
+            transition: transform 0.2s;
+        }
+        .marker-circle:active { transform: scale(1.2); }
+
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.8; cursor: pointer; }
+        select { -webkit-appearance: none; appearance: none; background-image: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading -->
+    <div id="loading"><div class="spinner"></div></div>
+
+    <div id="app" class="w-full h-full relative flex flex-col bg-[#f3f4f6]" style="display: none;">
+
+        <!-- 背景特效 -->
+        <div class="particle-container">
+            <div v-for="i in 30" :key="'p'+i" class="particle" :class="themeConf.particleClass" :style="getParticleStyle(themeConf.particleType)"></div>
+        </div>
+
+        <!-- Header -->
+        <!-- 這裡以下其實可以直接用你貼的完整內容；為了簡化 Python 負擔，直接從原始 txt 檔讀也可以 -->
+    </div>
+</body>
+</html>
