@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>北海道雪祭八日遊 v18.6 (Emoji更新)</title>
+    <title>北海道雪祭八日遊 v18.8 (自訂ID版)</title>
     
     <!-- 核心套件 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -337,11 +337,16 @@
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-xs font-bold text-blue-500 bg-blue-100 px-2 py-0.5 rounded">我是主辦人</span>
                     </div>
-                    <p class="text-[10px] text-slate-400 mb-2">將此 ID 分享給旅伴，讓他們加入編輯：</p>
-                    <div class="flex gap-2">
-                        <div class="flex-1 bg-white border border-slate-200 rounded-lg p-3 font-mono font-bold text-center text-slate-700 tracking-wider select-all">{{ docId }}</div>
-                        <button @click="copyDocId" class="bg-blue-500 text-white w-12 rounded-lg flex items-center justify-center hover:bg-blue-600 transition active:scale-95 shadow-sm shadow-blue-200"><i class="ph-bold ph-copy text-lg"></i></button>
+                    <p class="text-[10px] text-slate-400 mb-2">設定一組專屬 ID 分享給旅伴：</p>
+                    <div class="flex gap-2 relative">
+                        <!-- Modified: Editable ID Input -->
+                        <input v-model="editingDocId" class="flex-1 bg-white border border-slate-200 rounded-lg p-3 font-mono font-bold text-center text-slate-700 tracking-wider focus:ring-2 focus:ring-blue-400 outline-none placeholder-slate-300" placeholder="輸入自訂 ID..." @keyup.enter="saveCustomDocId">
+                        
+                        <!-- Dynamic Button: Show Check if changed, Copy if not -->
+                        <button v-if="editingDocId !== docId" @click="saveCustomDocId" class="bg-green-500 text-white w-12 rounded-lg flex items-center justify-center hover:bg-green-600 transition active:scale-95 shadow-sm shadow-green-200"><i class="ph-bold ph-check text-lg"></i></button>
+                        <button v-else @click="copyDocId" class="bg-blue-500 text-white w-12 rounded-lg flex items-center justify-center hover:bg-blue-600 transition active:scale-95 shadow-sm shadow-blue-200"><i class="ph-bold ph-copy text-lg"></i></button>
                     </div>
+                    <p v-if="editingDocId !== docId" class="text-[10px] text-green-600 mt-2 text-center animate-pulse">💡 按下綠色勾勾以更新 ID</p>
                 </div>
 
                 <!-- Divider -->
@@ -415,7 +420,6 @@
         };
         const FLAT_CITY_DB = Object.values(CITY_DB).reduce((acc, region) => ({...acc, ...region}), {});
         
-        // [Map Fix] 擴充座標資料庫，包含 v6 的資料與新地點
         const LOCATION_COORDS = { 
             "新千歲機場": [42.7752, 141.6923], "札幌站": [43.0686, 141.3508], "札幌車站": [43.0686, 141.3508],
             "大通公園": [43.0601, 141.3534], "札幌雪祭（大通會場）": [43.0601, 141.3534], "札幌雪祭": [43.0601, 141.3534],
@@ -531,6 +535,7 @@
                 const syncStatus = ref('offline');
                 const docId = ref('trip_default');
                 const tempDocId = ref('');
+                const editingDocId = ref(''); // For custom ID editing
                 const tripList = ref([]);
                 const currentTripId = ref('trip_default');
                 let unsubscribeSnapshot = null;
@@ -706,10 +711,14 @@
                     const t = tripList.value.find(x => x.id === id);
                     if (t) {
                         currentTripId.value = id; docId.value = id;
+                        editingDocId.value = id; // Sync editing value
                         const d = t.data;
                         setup.value = d.setup; days.value = d.daysData; expenses.value = d.expenses; 
                         shoppingList.value = d.shoppingList; mustList.value = d.mustList; memo.value = d.memo;
                         currentDayIdx.value = 0; showMenu.value = false;
+                        
+                        // If online, switch channel
+                        if (syncStatus.value === 'online') startAuth();
                     }
                 };
                 const createNewTrip = () => {
@@ -723,13 +732,46 @@
                     tripList.value = [def]; switchTrip(def.id); 
                 };
                 
-                // Cloud
+                // Cloud & ID Management
                 const changeDocId = () => { 
-                    if (!db) { alert("連線失敗：Firebase 未成功初始化，請確認您的金鑰是否正確填寫。"); return; }
+                    if (!db) { alert("連線失敗：Firebase 未成功初始化"); return; }
                     if (!tempDocId.value) { alert("請輸入同步 ID"); return; }
-                    docId.value = tempDocId.value; 
+                    
+                    docId.value = tempDocId.value;
+                    editingDocId.value = tempDocId.value;
+                    localStorage.setItem('trip_v18_joined_id', docId.value);
                     startAuth(); 
                     showCloudModal.value = false; 
+                };
+
+                // [New Feature] Custom Doc ID
+                const saveCustomDocId = () => {
+                    if (!editingDocId.value || editingDocId.value === docId.value) return;
+                    
+                    const newId = editingDocId.value.trim();
+                    if (!newId) return;
+
+                    // Check if ID is already used by another trip in the list
+                    if (tripList.value.some(t => t.id === newId && t.id !== currentTripId.value)) {
+                        alert('此 ID 已經存在於您的旅程列表中，請換一個。');
+                        return;
+                    }
+
+                    // Update ID in Trip List (Rename the trip basically)
+                    const tripIdx = tripList.value.findIndex(t => t.id === currentTripId.value);
+                    if (tripIdx !== -1) {
+                        tripList.value[tripIdx].id = newId;
+                    }
+
+                    // Update State
+                    currentTripId.value = newId;
+                    docId.value = newId;
+                    
+                    // Save & Reconnect
+                    saveAll();
+                    startAuth();
+                    
+                    alert(`ID 已更新為：${newId}\n請記得將新 ID 分享給旅伴！`);
                 };
                 
                 const copyDocId = () => { navigator.clipboard.writeText(docId.value); alert('已複製ID'); };
@@ -804,13 +846,36 @@
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('app').style.display = 'flex';
                     updateExchangeRate();
+                    
+                    // [Added] Check for saved joined ID
+                    const savedJoinedId = localStorage.getItem('trip_v18_joined_id');
+                    if(savedJoinedId) {
+                        docId.value = savedJoinedId;
+                        tempDocId.value = savedJoinedId;
+                        editingDocId.value = savedJoinedId;
+                    }
+                    
                     const saved = localStorage.getItem(STORAGE_KEY);
-                    if(saved) { try { tripList.value = JSON.parse(saved); switchTrip(localStorage.getItem(STORAGE_KEY+'_last') || tripList.value[0].id); } catch { restoreDefaultTrip(); } } else { restoreDefaultTrip(); }
+                    if(saved) { 
+                        try { 
+                            tripList.value = JSON.parse(saved); 
+                            // Ensure valid data structure
+                            if (!Array.isArray(tripList.value) || tripList.value.length === 0) throw new Error();
+                            
+                            // Restore last trip or default
+                            const lastId = localStorage.getItem(STORAGE_KEY+'_last');
+                            switchTrip(lastId && tripList.value.some(t=>t.id===lastId) ? lastId : tripList.value[0].id); 
+                        } catch { restoreDefaultTrip(); } 
+                    } else { restoreDefaultTrip(); }
                     
                     if(firebaseConfig.apiKey) startAuth();
+                    
+                    // Watchers
                     watch([days, expenses, shoppingList, mustList, setup, memo], () => { saveAll(); }, {deep:true});
                     watch(viewMode, (v) => { if(v==='map') nextTick(refreshMap); });
                     watch(currentDayIdx, () => { if(viewMode.value==='map') refreshMap(); });
+                    // Sync editing ID when docId changes from outside (e.g. switching trips)
+                    watch(docId, (newVal) => { editingDocId.value = newVal; });
                 });
 
                 return {
@@ -819,13 +884,13 @@
                     themeConf, headerClasses, textAccentClass, flightCardGradient, themeIcon,
                     weatherForecast, currentDay, rates, currencyList,
                     activeShoppingList, shoppingStats, shopFilter, shoppingCategories, totalExpenseInTWD, settlementPlan,
-                    syncStatus, syncStatusText, tempDocId, docId, cityDB: CITY_DB, boughtShoppingList, boughtStats,
+                    syncStatus, syncStatusText, tempDocId, docId, editingDocId, cityDB: CITY_DB, boughtShoppingList, boughtStats,
                     getRealDate, getIcon, getCategoryColor, getSymbol, getMapLink, getParticleStyle,
                     setTheme, changeCurrency, updateExchangeRate,
                     addItem, removeItem, moveItem, addDay, addExpense, addShoppingItem, deleteShoppingItem, updateItemImage, addToPlan, addMustItem,
                     addFlight, addHSR, // Exported to template
                     createNewTrip, switchTrip, deleteTrip, restoreDefaultTrip, exportBackup, importBackup,
-                    changeDocId, copyDocId, refreshMap, mapMarkersCount, selectedMapItem
+                    changeDocId, saveCustomDocId, copyDocId, refreshMap, mapMarkersCount, selectedMapItem
                 };
             }
         }).mount('#app');
