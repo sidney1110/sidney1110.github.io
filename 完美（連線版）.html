@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>北海道雪祭八日遊 (雲端同步版)</title>
+    <title>北海道雪祭八日遊 v18.6 (Emoji更新)</title>
     
     <!-- 核心套件 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -259,7 +259,7 @@
                     <div class="bg-gradient-to-br from-slate-700 to-slate-800 text-white rounded-[24px] p-6 shadow-lg text-center mb-4 relative overflow-hidden"><div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div><div class="text-[10px] opacity-60 font-bold tracking-widest uppercase mb-1">TOTAL EXPENSE (TWD)</div><div class="text-4xl font-bold font-mono my-2 tracking-tight">NT$ {{ Math.round(totalExpenseInTWD).toLocaleString() }}</div><div class="text-[10px] opacity-40 font-mono">Base Rate: 1 {{ setup.currency }} ≈ {{ setup.rate }} TWD</div></div>
                     <div v-if="settlementPlan.length > 0" class="bg-blue-50 rounded-xl p-3 mb-4 border border-blue-100"><div class="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-2">結帳建議 (TWD)</div><div v-for="(plan, idx) in settlementPlan" :key="idx" class="flex items-center justify-between text-xs bg-white p-2.5 rounded-lg shadow-sm"><span class="font-bold text-slate-700 flex items-center gap-2">{{ plan.from }} <i class="ph-bold ph-arrow-right text-blue-300 text-[10px]"></i> {{ plan.to }}</span><span class="font-mono font-bold text-blue-600">NT$ {{ plan.amount.toLocaleString() }}</span></div></div>
                     <div class="space-y-3 mb-6"><div v-for="(exp, i) in expenses" :key="i" class="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-lg shadow-inner">{{ exp.payer === '鳳梨' ? '🍍' : '🍓' }}</div><div><div class="text-sm font-bold text-slate-800">{{ exp.item }}</div><div class="text-[10px] text-slate-400">{{ exp.payer }} 付款</div></div></div><div class="flex items-center gap-3"><div class="text-right"><div class="font-mono font-bold text-slate-800 text-sm">{{ getSymbol(exp.currency) }} {{ Number(exp.amount).toLocaleString() }}</div><div v-if="exp.currency !== 'TWD'" class="text-[10px] text-slate-400">≈ NT$ {{ Math.round(exp.amount * (rates[exp.currency] || 1)).toLocaleString() }}</div></div><button @click="expenses.splice(i,1)" class="text-slate-300 hover:text-red-400"><i class="ph-fill ph-x-circle"></i></button></div></div></div>
-                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mb-24"><div class="flex flex-col gap-3"><input v-model="newExpense.item" placeholder="項目名稱 (如: 晚餐)" class="w-full text-base font-bold bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-slate-200"><div class="flex gap-2"><input v-model="newExpense.amount" type="number" placeholder="金額" class="flex-1 text-base font-mono font-bold bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-slate-200"><select v-model="newExpense.currency" class="w-20 text-sm font-bold bg-slate-100 border-none rounded-xl px-2 py-3 text-center"><option v-for="c in currencyList" :key="c" :value="c">{{ c }}</option></select></div><div class="flex gap-2"><div class="flex-1 bg-slate-50 rounded-xl p-1 flex"><button v-for="p in ['鳳梨', '莓果']" :key="p" @click="newExpense.payer=p" class="flex-1 rounded-lg text-sm font-bold py-2 transition" :class="newExpense.payer===p ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'">{{ p }}</button></div><button @click="addExpense" class="w-12 bg-green-500 text-white rounded-xl flex items-center justify-center shadow-md active:scale-95"><i class="ph-bold ph-plus text-xl"></i></button></div></div></div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mb-24"><div class="flex flex-col gap-3"><input v-model="newExpense.item" placeholder="項目名稱 (如: 晚餐)" class="w-full text-base font-bold bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-slate-200" @keyup.enter="addExpense"><div class="flex gap-2"><input v-model="newExpense.amount" type="number" placeholder="金額" class="flex-1 text-base font-mono font-bold bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-slate-200" @keyup.enter="addExpense"><select v-model="newExpense.currency" class="w-20 text-sm font-bold bg-slate-100 border-none rounded-xl px-2 py-3 text-center"><option v-for="c in currencyList" :key="c" :value="c">{{ c }}</option></select></div><div class="flex gap-2"><div class="flex-1 bg-slate-50 rounded-xl p-1 flex"><button v-for="p in ['鳳梨', '莓果']" :key="p" @click="newExpense.payer=p" class="flex-1 rounded-lg text-sm font-bold py-2 transition" :class="newExpense.payer===p ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'">{{ p }}</button></div><button @click="addExpense" class="w-12 bg-green-500 text-white rounded-xl flex items-center justify-center shadow-md active:scale-95"><i class="ph-bold ph-plus text-xl"></i></button></div></div></div>
                 </div>
 
                 <!-- MUST EAT -->
@@ -311,7 +311,7 @@
                         <div v-for="trip in tripList" :key="trip.id" @click="switchTrip(trip.id)" class="p-3 rounded-xl border cursor-pointer flex justify-between items-center transition" :class="currentTripId === trip.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-200 hover:bg-slate-50'"><div><div class="font-bold text-slate-700">{{ trip.name }}</div><div class="text-[10px] text-slate-400">{{ trip.date }} • {{ trip.days }}天</div></div><div v-if="currentTripId === trip.id" class="text-blue-500"><i class="ph-fill ph-check-circle text-xl"></i></div><button v-else @click.stop="deleteTrip(trip.id)" class="text-slate-300 hover:text-red-500 p-2 cursor-pointer"><i class="ph-bold ph-trash"></i></button></div>
                     </div>
                     <h3 class="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">四季主題</h3>
-                    <div class="grid grid-cols-2 gap-3 mb-6"><button @click="setTheme('pineapple')" :class="currentThemeKey==='pineapple'?'ring-2 ring-pink-400 bg-pink-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🍍❄️</span><div class="text-xs font-bold text-slate-600">鳳梨莓果</div></button><button @click="setTheme('spring')" :class="currentThemeKey==='spring'?'ring-2 ring-pink-400 bg-pink-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🌸</span><div class="text-xs font-bold text-slate-600">春日櫻花</div></button><button @click="setTheme('summer')" :class="currentThemeKey==='summer'?'ring-2 ring-sky-400 bg-sky-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">☀️</span><div class="text-xs font-bold text-slate-600">夏日陽光</div></button><button @click="setTheme('autumn')" :class="currentThemeKey==='autumn'?'ring-2 ring-orange-400 bg-orange-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🍁</span><div class="text-xs font-bold text-slate-600">秋日楓紅</div></button><button @click="setTheme('winter')" :class="currentThemeKey==='winter'?'ring-2 ring-indigo-400 bg-indigo-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">❄️</span><div class="text-xs font-bold text-slate-600">冬日極光</div></button></div>
+                    <div class="grid grid-cols-2 gap-3 mb-6"><button @click="setTheme('pineapple')" :class="currentThemeKey==='pineapple'?'ring-2 ring-pink-400 bg-pink-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🍍🍓</span><div class="text-xs font-bold text-slate-600">鳳梨莓果</div></button><button @click="setTheme('spring')" :class="currentThemeKey==='spring'?'ring-2 ring-pink-400 bg-pink-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🌸</span><div class="text-xs font-bold text-slate-600">春日櫻花</div></button><button @click="setTheme('summer')" :class="currentThemeKey==='summer'?'ring-2 ring-sky-400 bg-sky-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">☀️</span><div class="text-xs font-bold text-slate-600">夏日陽光</div></button><button @click="setTheme('autumn')" :class="currentThemeKey==='autumn'?'ring-2 ring-orange-400 bg-orange-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">🍁</span><div class="text-xs font-bold text-slate-600">秋日楓紅</div></button><button @click="setTheme('winter')" :class="currentThemeKey==='winter'?'ring-2 ring-indigo-400 bg-indigo-50':'bg-slate-50'" class="p-3 rounded-2xl flex items-center gap-2 cursor-pointer"><span class="text-xl">❄️</span><div class="text-xs font-bold text-slate-600">冬日極光</div></button></div>
                     <div class="flex flex-col gap-3">
                         <button @click="exportBackup" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"><i class="ph-bold ph-download-simple"></i> 下載備份</button>
                         <label class="w-full py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-200"><i class="ph-bold ph-upload-simple"></i> 匯入備份<input type="file" @change="importBackup" class="hidden" accept=".json"></label>
@@ -323,10 +323,44 @@
 
         <div v-if="showCloudModal" class="absolute inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm" @click.self="showCloudModal=false">
             <div class="bg-white w-4/5 max-w-sm rounded-2xl p-5 shadow-2xl">
-                <h3 class="font-bold text-lg mb-2 text-center flex items-center justify-center gap-2"><i class="ph-duotone ph-cloud-arrow-up text-blue-500"></i> 雲端同步 ID</h3>
-                <p class="text-xs text-slate-400 text-center mb-4">首次使用請點擊「切換/載入」啟動連線</p>
-                <div class="mb-4"><div class="flex gap-2"><input v-model="tempDocId" class="flex-1 bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono text-center font-bold text-slate-700 uppercase" placeholder="輸入 ID..."><button @click="copyDocId" class="bg-slate-100 text-slate-600 px-3 rounded-lg"><i class="ph-bold ph-copy"></i></button></div></div>
-                <button @click="changeDocId" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700"><i class="ph-bold ph-arrows-clockwise"></i> 切換 / 載入</button>
+                <!-- Header -->
+                <div class="flex flex-col items-center mb-6">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                        <i class="ph-fill ph-cloud-check text-blue-500 text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-slate-800">雲端同步設定</h3>
+                    <p class="text-xs text-slate-400 mt-1">即時儲存 • 多人共編</p>
+                </div>
+
+                <!-- Section 1: Host -->
+                <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs font-bold text-blue-500 bg-blue-100 px-2 py-0.5 rounded">我是主辦人</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-2">將此 ID 分享給旅伴，讓他們加入編輯：</p>
+                    <div class="flex gap-2">
+                        <div class="flex-1 bg-white border border-slate-200 rounded-lg p-3 font-mono font-bold text-center text-slate-700 tracking-wider select-all">{{ docId }}</div>
+                        <button @click="copyDocId" class="bg-blue-500 text-white w-12 rounded-lg flex items-center justify-center hover:bg-blue-600 transition active:scale-95 shadow-sm shadow-blue-200"><i class="ph-bold ph-copy text-lg"></i></button>
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="relative flex items-center justify-center mb-6">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-100"></div></div>
+                    <span class="relative bg-white px-3 text-xs text-slate-300 font-bold">OR</span>
+                </div>
+
+                <!-- Section 2: Guest -->
+                <div class="mb-2">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">我要加入行程</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-2">輸入主辦人提供的 ID：</p>
+                    <div class="flex gap-2">
+                        <input v-model="tempDocId" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 font-mono font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition" placeholder="貼上 ID..." @keyup.enter="changeDocId">
+                        <button @click="changeDocId" class="bg-slate-800 text-white px-4 rounded-xl font-bold text-sm hover:bg-slate-700 transition shadow-lg active:scale-95 whitespace-nowrap">加入</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div v-if="showCurrencyModal" class="absolute inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm" @click.self="showCurrencyModal=false">
@@ -343,12 +377,12 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        // 您的專屬 Firebase Config
+        // 您的專屬 Firebase Config (已幫您整合)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // === 已填入您的金鑰 ===
+        // === 您的金鑰 ===
         const firebaseConfig = {
             apiKey: "AIzaSyCGd-2_2Q3JOin3yZ-SJc99AxLEE74HRg4",
             authDomain: "trip-ad3a9.firebaseapp.com",
@@ -360,7 +394,11 @@
         };
 
         let db = null; let auth = null;
-        try { if (firebaseConfig.apiKey) { const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); } } catch(e) { console.warn("Firebase Init Skipped:", e); }
+        try { 
+            const app = initializeApp(firebaseConfig); 
+            auth = getAuth(app); 
+            db = getFirestore(app); 
+        } catch(e) { console.warn("Firebase Init Skipped:", e); }
 
         const { createApp, ref, computed, watch, onMounted, nextTick, reactive } = Vue;
 
@@ -399,7 +437,7 @@
         }; 
         
         const THEMES = {
-            pineapple: { header: 'bg-gradient-to-r from-yellow-400 via-orange-300 to-pink-500', textAccent: 'text-pink-500', flightCard: 'linear-gradient(135deg, #F59E0B 0%, #EC4899 100%)', icon: '🍍❄️', particleType: 'p-snow', particleClass: 'p-snow' },
+            pineapple: { header: 'bg-gradient-to-r from-yellow-400 via-orange-300 to-pink-500', textAccent: 'text-pink-500', flightCard: 'linear-gradient(135deg, #F59E0B 0%, #EC4899 100%)', icon: '🍍🍓', particleType: 'p-snow', particleClass: 'p-snow' },
             spring: { header: 'bg-gradient-to-r from-pink-300 to-rose-400', textAccent: 'text-pink-500', flightCard: 'linear-gradient(135deg, #F9A8D4 0%, #F43F5E 100%)', icon: '🌸', particleType: 'p-flower', particleClass: 'p-flower' },
             summer: { header: 'bg-gradient-to-r from-sky-400 to-cyan-500', textAccent: 'text-sky-600', flightCard: 'linear-gradient(135deg, #38BDF8 0%, #06B6D4 100%)', icon: '☀️', particleType: 'p-sun', particleClass: 'p-sun' },
             autumn: { header: 'bg-gradient-to-r from-orange-400 to-amber-600', textAccent: 'text-orange-600', flightCard: 'linear-gradient(135deg, #FB923C 0%, #D97706 100%)', icon: '🍁', particleType: 'p-leaf', particleClass: 'p-leaf' },
@@ -610,13 +648,20 @@
                 const updateExchangeRate = async () => {
                     isFetchingRates.value = true;
                     try {
-                        const res = await fetch(`https://open.er-api.com/v6/latest/${setup.value.currency}`);
+                        const res = await fetch(`https://open.er-api.com/v6/latest/TWD`);
                         const data = await res.json();
-                        if (data && data.rates && data.rates.TWD) {
-                            rates[setup.value.currency] = 1; 
-                            setup.value.rate = data.rates.TWD;
+                        if (data && data.rates) {
+                            currencyList.forEach(c => {
+                                if (data.rates[c]) {
+                                    rates[c] = 1 / data.rates[c];
+                                }
+                            });
+                            rates['TWD'] = 1;
+                            if (rates[setup.value.currency]) {
+                                setup.value.rate = rates[setup.value.currency];
+                            }
                         }
-                    } catch (e) { console.error('Rate update failed'); }
+                    } catch (e) { console.error('Rate update failed', e); }
                     isFetchingRates.value = false;
                 };
 
@@ -679,10 +724,17 @@
                 };
                 
                 // Cloud
-                const changeDocId = () => { if(tempDocId.value && db) { docId.value = tempDocId.value; startAuth(); showCloudModal.value=false; }};
+                const changeDocId = () => { 
+                    if (!db) { alert("連線失敗：Firebase 未成功初始化，請確認您的金鑰是否正確填寫。"); return; }
+                    if (!tempDocId.value) { alert("請輸入同步 ID"); return; }
+                    docId.value = tempDocId.value; 
+                    startAuth(); 
+                    showCloudModal.value = false; 
+                };
+                
                 const copyDocId = () => { navigator.clipboard.writeText(docId.value); alert('已複製ID'); };
                 const startAuth = () => {
-                    if(!auth) { alert('請填寫 Firebase Config'); return; }
+                    if(!auth) { alert('Firebase Auth 未初始化'); return; }
                     signInAnonymously(auth).then(() => {
                         syncStatus.value = 'syncing';
                         if(unsubscribeSnapshot) unsubscribeSnapshot();
