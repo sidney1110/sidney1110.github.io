@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>集運小幫手 (雲端同步版)</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2563EB">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .safe-area-top { padding-top: env(safe-area-inset-top); }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-[100dvh] flex flex-col select-none">
+
+    <!-- 頂部狀態列 -->
+    <div class="bg-white safe-area-top w-full sticky top-0 z-20"></div>
+
+    <!-- App Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10 px-4 py-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+            <div class="bg-blue-600 p-1.5 rounded-lg text-white">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </div>
+            <h1 class="text-lg font-bold text-slate-900">集運助手 <span class="text-xs font-normal text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full ml-1">Cloud</span></h1>
+        </div>
+        
+        <div id="auth-container">
+            <button id="btn-login" class="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium">登入同步</button>
+            <div id="user-info" class="hidden flex items-center gap-2">
+                <img id="user-avatar" src="" class="w-8 h-8 rounded-full border border-slate-200">
+                <button onclick="logout()" class="text-xs text-slate-500 underline">登出</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主內容區 -->
+    <main id="main-content" class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 pb-24 safe-area-bottom scroll-smooth relative">
+        
+        <!-- 登入提示 -->
+        <div id="login-overlay" class="absolute inset-0 z-40 bg-slate-50/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center hidden">
+            <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full">
+                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></svg>
+                </div>
+                <h2 class="text-xl font-bold mb-2">請先登入</h2>
+                <p class="text-slate-500 text-sm mb-6">登入後即可將包裹紀錄儲存至雲端，在不同裝置間同步資料。</p>
+                <button onclick="login()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
+                    使用 Google 登入
+                </button>
+            </div>
+        </div>
+
+        <div class="flex p-1 bg-slate-200 rounded-xl mb-4">
+            <button onclick="switchTab('list')" id="tab-list" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all bg-white text-blue-600 shadow-sm">我的包裹</button>
+            <button onclick="switchTab('address')" id="tab-address" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-slate-500">集運倉地址</button>
+        </div>
+
+        <div id="view-address" class="hidden fade-in-up space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                <div class="bg-blue-50/50 p-4 border-b border-blue-100 flex gap-3">
+                    <div class="bg-white p-2 rounded-full shadow-sm text-blue-600 self-start">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">東莞鼎昊倉</h3>
+                        <p class="text-sm text-slate-500">會員代號: 1110 (入倉號 81332)</p>
+                    </div>
+                </div>
+                <div class="divide-y divide-slate-100">
+                    <div class="p-4 flex items-center justify-between active:bg-slate-50" onclick="copyText('海风转hsinying_1110', '收件人')">
+                        <div><p class="text-xs text-slate-500 mb-1">收件人</p><p class="font-medium text-lg">海风转hsinying_1110</p></div>
+                        <svg class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </div>
+                    <div class="p-4 flex items-center justify-between active:bg-slate-50" onclick="copyText('18692913869', '電話')">
+                        <div><p class="text-xs text-slate-500 mb-1">電話</p><p class="font-medium text-lg">18692913869</p></div>
+                        <svg class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </div>
+                    <div class="p-4 flex items-center justify-between active:bg-slate-50" onclick="copyText('广东省东莞市厚街镇宝塘社区康乐南路305号鼎昊智能高科产业园12栋1楼6号仓库81332号', '地址')">
+                        <div class="pr-4"><p class="text-xs text-slate-500 mb-1">詳細地址</p><p class="font-medium text-base leading-relaxed text-slate-700">广东省东莞市厚街镇宝塘社区康乐南路305号鼎昊智能高科产业园12栋1楼6号仓库81332号</p></div>
+                        <svg class="w-5 h-5 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </div>
+                </div>
+            </div>
+            <button onclick="copyText('海风转hsinying_1110 18692913869 广东省东莞市厚街镇宝塘社区康乐南路305号鼎昊智能高科产业园12栋1楼6号仓库81332号', '完整地址')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-medium active:scale-[0.98] transition-transform shadow-sm">複製完整地址 (一鍵貼上)</button>
+        </div>
+
+        <div id="view-list" class="fade-in-up space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                    <span class="text-xs text-slate-400 mb-1">待入庫</span>
+                    <span id="stat-waiting" class="text-2xl font-bold text-orange-500">0</span>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                    <span class="text-xs text-slate-400 mb-1">已入庫</span>
+                    <span id="stat-arrived" class="text-2xl font-bold text-green-500">0</span>
+                </div>
+            </div>
+            
+            <div class="text-center text-xs text-slate-400 font-medium bg-slate-100 py-1 rounded-full mx-auto w-fit px-4">
+                總重 <span id="total-weight-display">0.00</span> kg
+            </div>
+
+            <div id="package-list-container" class="space-y-3 pb-20"></div>
+            
+            <div id="loading-state" class="text-center py-12 hidden">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-slate-400 text-sm mt-2">正在同步資料...</p>
+            </div>
+
+            <div id="empty-state" class="hidden text-center py-16">
+                <div class="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-10 h-10 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                </div>
+                <p class="text-slate-500 font-medium">還沒有包裹</p>
+                <p class="text-slate-400 text-sm mt-1">點擊右下角按鈕新增</p>
+            </div>
+        </div>
+    </main>
+
+    <div class="fixed bottom-8 right-6 z-30 safe-area-bottom">
+        <button onclick="toggleModal(true)" class="w-14 h-14 bg-blue-600 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-white active:scale-90 transition-transform">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        </button>
+    </div>
+
+    <div id="add-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleModal(false)"></div>
+        <div class="bg-white w-full sm:w-[400px] rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl z-10 fade-in-up max-h-[90vh] overflow-y-auto safe-area-bottom">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-800">新增包裹</h2>
+                <button onclick="toggleModal(false)" class="p-2 bg-slate-100 rounded-full text-slate-500">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>
+                </button>
+            </div>
+            
+            <form id="add-form" onsubmit="handleAddSubmit(event)" class="space-y-4">
+                <div><label class="text-xs font-medium text-slate-500">運單號</label><input type="text" id="inp-tracking" required class="w-full mt-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="請輸入或貼上單號"></div>
+                <div><label class="text-xs font-medium text-slate-500">物品名稱</label><input type="text" id="inp-name" required class="w-full mt-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="例如：衣服"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-medium text-slate-500">購買渠道</label><select id="inp-channel" class="w-full mt-1 px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"><option value="淘寶">淘寶</option><option value="拼多多">拼多多</option><option value="京東">京東</option><option value="閑魚">閑魚</option><option value="1688">1688</option><option value="其他">其他</option></select></div>
+                    <div><label class="text-xs font-medium text-slate-500">種類</label><select id="inp-cat" class="w-full mt-1 px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"><option value="普貨">普貨</option><option value="特貨">特貨</option><option value="敏感貨">敏感貨</option></select></div>
+                </div>
+                <div><label class="text-xs font-medium text-slate-500">預估重量 (kg)</label><input type="number" id="inp-weight" step="0.01" class="w-full mt-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none" placeholder="0.00"></div>
+                <div><div class="w-full h-32 mt-2 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 gap-2 cursor-pointer bg-slate-50 active:bg-slate-100 transition-colors relative overflow-hidden" onclick="document.getElementById('inp-file').click()"><img id="preview-img" class="hidden w-full h-full object-cover absolute inset-0"><div id="upload-placeholder" class="flex flex-col items-center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><span class="text-xs mt-1">點擊上傳照片</span></div></div><input type="file" id="inp-file" class="hidden" accept="image/*" onchange="handleFileSelect(this)"></div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-blue-200 active:scale-[0.98] transition-transform">確認新增</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="hidden fixed top-6 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full shadow-xl z-[60] text-sm font-medium bg-slate-800 text-white flex items-center gap-2 fade-in-up">
+        <span id="toast-msg">提示訊息</span>
+    </div>
+
+    <script type="module">
+        // 導入 Firebase 函式庫 (使用 CDN 連結)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // ============================================
+        // --- 你的 Firebase 設定 (已整合) ---
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVkAU_2NXdpwGKQ4Lx5kW6x3XllvOjZgA",
+            authDomain: "package-7fbf2.firebaseapp.com",
+            projectId: "package-7fbf2",
+            storageBucket: "package-7fbf2.firebasestorage.app",
+            messagingSenderId: "487842090846",
+            appId: "1:487842090846:web:89d04add94ff2c691dc9cf",
+            measurementId: "G-PED41VWL1X"
+        };
+
+        // 初始化 Firebase
+        let app, auth, db, currentUser;
+        
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log("Firebase initialized successfully");
+        } catch (e) {
+            console.error("Firebase 初始化失敗", e);
+            document.getElementById('loading-state').innerHTML = '<p class="text-red-500">Firebase 設定錯誤，請檢查控制台</p>';
+        }
+
+        // --- Auth 邏輯 ---
+        const loginOverlay = document.getElementById('login-overlay');
+        const userInfo = document.getElementById('user-info');
+        const btnLogin = document.getElementById('btn-login');
+        const userAvatar = document.getElementById('user-avatar');
+
+        window.login = () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider).catch(error => {
+                showToast("登入失敗: " + error.message);
+                console.error("Login Error:", error);
+            });
+        };
+
+        window.logout = () => {
+            if(confirm("確定要登出嗎？")) {
+                signOut(auth);
+            }
+        };
+
+        if(auth) {
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    loginOverlay.classList.add('hidden');
+                    userInfo.classList.remove('hidden');
+                    userInfo.classList.add('flex');
+                    btnLogin.classList.add('hidden');
+                    userAvatar.src = user.photoURL || 'https://via.placeholder.com/32';
+                    subscribeToPackages(user.uid);
+                } else {
+                    loginOverlay.classList.remove('hidden');
+                    userInfo.classList.add('hidden');
+                    userInfo.classList.remove('flex');
+                    btnLogin.classList.remove('hidden');
+                    renderList([]);
+                    document.getElementById('loading-state').classList.add('hidden');
+                }
+            });
+        }
+
+        // --- Firestore 邏輯 ---
+        let unsubscribe = null;
+
+        function subscribeToPackages(uid) {
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('package-list-container').innerHTML = '';
+
+            if (unsubscribe) unsubscribe();
+
+            const q = query(collection(db, "users", uid, "packages"), orderBy("createdAt", "desc"));
+            
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                const packages = [];
+                snapshot.forEach((doc) => {
+                    packages.push({ id: doc.id, ...doc.data() });
+                });
+                renderList(packages);
+                document.getElementById('loading-state').classList.add('hidden');
+            }, (error) => {
+                console.error("讀取失敗", error);
+                if(error.code === 'permission-denied') {
+                    showToast("權限不足：請檢查 Firebase 安全規則");
+                } else {
+                    showToast("資料讀取失敗");
+                }
+            });
+        }
+
+        window.savePackageToDB = async (pkgData) => {
+            if (!currentUser) return;
+            try {
+                await addDoc(collection(db, "users", currentUser.uid, "packages"), {
+                    ...pkgData,
+                    createdAt: serverTimestamp()
+                });
+                showToast("已同步至雲端");
+            } catch (e) {
+                console.error(e);
+                showToast("儲存失敗");
+            }
+        };
+
+        window.updatePackageStatus = async (docId, field, value) => {
+            if (!currentUser) return;
+            const ref = doc(db, "users", currentUser.uid, "packages", docId);
+            try {
+                await updateDoc(ref, { [field]: value });
+            } catch (e) {
+                showToast("更新失敗");
+            }
+        };
+
+        window.deletePackageFromDB = async (docId) => {
+            if (!currentUser) return;
+            const ref = doc(db, "users", currentUser.uid, "packages", docId);
+            try {
+                await deleteDoc(ref);
+                showToast("已刪除");
+            } catch (e) {
+                showToast("刪除失敗");
+            }
+        };
+
+
+        // --- UI & Helper Functions ---
+        let currentImage = null;
+
+        function renderList(packages) {
+            const container = document.getElementById('package-list-container');
+            const emptyState = document.getElementById('empty-state');
+            const statWaiting = document.getElementById('stat-waiting');
+            const statArrived = document.getElementById('stat-arrived');
+            const totalWeightDisplay = document.getElementById('total-weight-display');
+
+            container.innerHTML = '';
+            
+            let waiting = 0;
+            let arrived = 0;
+            let totalWeight = 0;
+
+            packages.forEach(pkg => {
+                if(pkg.arrived) arrived++; else waiting++;
+                totalWeight += (parseFloat(pkg.weight) || 0);
+            });
+
+            statWaiting.textContent = waiting;
+            statArrived.textContent = arrived;
+            totalWeightDisplay.textContent = totalWeight.toFixed(2);
+
+            if (packages.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                
+                packages.forEach(pkg => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden';
+                    el.innerHTML = `
+                        <div class="flex h-32">
+                            <div class="w-24 bg-slate-100 flex-shrink-0 relative border-r border-slate-100 flex items-center justify-center overflow-hidden" onclick="viewImage('${pkg.image || ''}')">
+                                ${pkg.image 
+                                    ? `<img src="${pkg.image}" class="w-full h-full object-cover">` 
+                                    : `<svg class="w-8 h-8 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`
+                                }
+                            </div>
+                            <div class="flex-1 p-3 flex flex-col justify-between min-w-0">
+                                <div>
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h3 class="font-bold text-slate-800 truncate text-base">${esc(pkg.itemName)}</h3>
+                                        <button onclick="handleDelete('${pkg.id}')" class="text-slate-300 p-1 -mt-1 -mr-1 active:text-red-500">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 flex-wrap text-xs">
+                                        <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md">${esc(pkg.channel || '淘寶')}</span>
+                                        <span class="bg-${pkg.category === '普貨' ? 'blue' : 'orange'}-100 text-${pkg.category === '普貨' ? 'blue' : 'orange'}-700 px-2 py-1 rounded-md">${pkg.category}</span>
+                                        ${pkg.weight > 0 ? `<span class="text-slate-500 font-mono">${pkg.weight}kg</span>` : ''}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-2 mt-1" onclick="copyText('${esc(pkg.trackingNumber)}', '運單號')">
+                                        <span class="text-xs font-mono text-slate-500 truncate mr-2 bg-slate-50 px-1 py-0.5 rounded border border-slate-100">${esc(pkg.trackingNumber)}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="handleStatus('${pkg.id}', 'arrived', ${!pkg.arrived})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.arrived ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-slate-400 border-slate-200'}">
+                                            ${pkg.arrived ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> 已到倉' : '未入庫'}
+                                        </button>
+                                        <button onclick="handleStatus('${pkg.id}', 'shipped', ${!pkg.shipped})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.shipped ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-400 border-slate-200'}">
+                                            ${pkg.shipped ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"/><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg> 已運回' : '未發貨'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                });
+            }
+        }
+        
+        // Window Global Functions
+        window.switchTab = (tab) => {
+            const listBtn = document.getElementById('tab-list'), addrBtn = document.getElementById('tab-address');
+            const viewList = document.getElementById('view-list'), viewAddr = document.getElementById('view-address');
+            if (tab === 'list') {
+                listBtn.classList.replace('text-slate-500', 'bg-white'); listBtn.classList.add('text-blue-600', 'shadow-sm');
+                addrBtn.classList.replace('bg-white', 'text-slate-500'); addrBtn.classList.remove('text-blue-600', 'shadow-sm');
+                viewList.classList.remove('hidden'); viewAddr.classList.add('hidden');
+            } else {
+                addrBtn.classList.replace('text-slate-500', 'bg-white'); addrBtn.classList.add('text-blue-600', 'shadow-sm');
+                listBtn.classList.replace('bg-white', 'text-slate-500'); listBtn.classList.remove('text-blue-600', 'shadow-sm');
+                viewAddr.classList.remove('hidden'); viewList.classList.add('hidden');
+            }
+        };
+
+        window.toggleModal = (show) => {
+            const modal = document.getElementById('add-modal');
+            modal.classList.toggle('hidden', !show);
+            if (show) { 
+                document.getElementById('add-form').reset(); 
+                currentImage = null; 
+                document.getElementById('preview-img').classList.add('hidden'); 
+                document.getElementById('upload-placeholder').classList.remove('hidden'); 
+            }
+        };
+
+        window.handleFileSelect = (input) => {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 500; 
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        currentImage = canvas.toDataURL('image/jpeg', 0.6);
+                        document.getElementById('preview-img').src = currentImage;
+                        document.getElementById('preview-img').classList.remove('hidden');
+                        document.getElementById('upload-placeholder').classList.add('hidden');
+                    };
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        };
+
+        window.handleAddSubmit = (e) => {
+            e.preventDefault();
+            const tracking = document.getElementById('inp-tracking').value;
+            const name = document.getElementById('inp-name').value;
+            const channel = document.getElementById('inp-channel').value;
+            const category = document.getElementById('inp-cat').value;
+            const weight = document.getElementById('inp-weight').value;
+
+            window.savePackageToDB({
+                trackingNumber: tracking,
+                itemName: name,
+                channel,
+                category,
+                weight: weight,
+                image: currentImage,
+                arrived: false,
+                shipped: false
+            });
+            toggleModal(false);
+        };
+
+        window.handleDelete = (id) => {
+            if(confirm('確定要刪除嗎？')) {
+                window.deletePackageFromDB(id);
+            }
+        };
+
+        window.handleStatus = (id, field, value) => {
+            if (navigator.vibrate) navigator.vibrate(50);
+            window.updatePackageStatus(id, field, value);
+        };
+
+        window.copyText = (text, label) => {
+            const textarea = document.createElement('textarea'); textarea.value = text; textarea.style.position = 'fixed';
+            document.body.appendChild(textarea); textarea.focus(); textarea.select();
+            try { document.execCommand('copy'); showToast('已複製 ' + label); } catch (err) { showToast('複製失敗'); }
+            document.body.removeChild(textarea);
+        };
+
+        window.showToast = (msg) => {
+            const toast = document.getElementById('toast'); document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('hidden'); setTimeout(() => toast.classList.add('hidden'), 2000);
+        };
+
+        window.viewImage = (src) => { if(!src) return; const w = window.open(""); w.document.write(`<img src="${src}" style="width:100%"/>`); };
+
+        function esc(str) { if(!str) return ''; return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+    </script>
+</body>
+</html>
+
