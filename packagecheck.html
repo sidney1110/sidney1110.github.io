@@ -32,6 +32,7 @@
             <div class="bg-blue-600 p-1.5 rounded-lg text-white">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             </div>
+            <!-- 這裡已經移除了藍色的 Sort 字樣 -->
             <h1 class="text-lg font-bold text-slate-900">集運助手</h1>
         </div>
         
@@ -212,6 +213,9 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // ============================================
+        // --- 你的 Firebase Config (已整合) ---
+        // ============================================
         const firebaseConfig = {
             apiKey: "AIzaSyDVkAU_2NXdpwGKQ4Lx5kW6x3XllvOjZgA",
             authDomain: "package-7fbf2.firebaseapp.com",
@@ -388,33 +392,28 @@
                 weightLabel.textContent = "本頁總重";
             }
 
-            // 3. 強力排序邏輯 (Explicit Sorting Fix)
+            // 3. Smart Sorting Logic (The Fix)
+            // Priority:
+            // 0: Unfinished (Not arrived, Not shipped)
+            // 1: Arrived (Arrived, Not shipped)
+            // 2: Shipped (Shipped)
             displayPackages.sort((a, b) => {
-                // 定義狀態權重：未入庫(0) -> 已到倉(1) -> 已運回(2)
-                const getWeight = (p) => {
+                const getStatusWeight = (p) => {
                     if (p.shipped) return 2;
                     if (p.arrived) return 1;
                     return 0;
                 };
 
-                const weightA = getWeight(a);
-                const weightB = getWeight(b);
+                const weightA = getStatusWeight(a);
+                const weightB = getStatusWeight(b);
 
-                // 1. 先比狀態 (小的排上面)
+                // Sort by status weight (ascending)
                 if (weightA !== weightB) {
                     return weightA - weightB;
                 }
-
-                // 2. 狀態一樣，比時間 (新的排上面)
-                // 處理 Firestore Timestamp 各種可能格式
-                const getTime = (p) => {
-                    if (!p.createdAt) return 0;
-                    if (typeof p.createdAt.toMillis === 'function') return p.createdAt.toMillis();
-                    if (p.createdAt.seconds) return p.createdAt.seconds * 1000;
-                    return 0;
-                };
-
-                return getTime(b) - getTime(a);
+                
+                // If status is same, keep original time order (descending)
+                return 0; 
             });
 
 
