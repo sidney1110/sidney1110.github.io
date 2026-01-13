@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>集運小幫手 (雲端同步版)</title>
+    <title>集運小幫手 (雲端封存版)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -32,11 +32,11 @@
             <div class="bg-blue-600 p-1.5 rounded-lg text-white">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             </div>
-            <h1 class="text-lg font-bold text-slate-900">集運助手 <span class="text-xs font-normal text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full ml-1">Cloud</span></h1>
+            <h1 class="text-lg font-bold text-slate-900">集運助手 <span class="text-xs font-normal text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full ml-1">Pro</span></h1>
         </div>
         
         <div id="auth-container">
-            <button id="btn-login" class="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium">登入同步</button>
+            <button id="btn-login" class="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium">登入</button>
             <div id="user-info" class="hidden flex items-center gap-2">
                 <img id="user-avatar" src="" class="w-8 h-8 rounded-full border border-slate-200">
                 <button onclick="logout()" class="text-xs text-slate-500 underline">登出</button>
@@ -54,19 +54,21 @@
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" x2="20" y1="8" y2="14"/><line x1="23" x2="17" y1="11" y2="11"/></svg>
                 </div>
                 <h2 class="text-xl font-bold mb-2">請先登入</h2>
-                <p class="text-slate-500 text-sm mb-6">登入後即可將包裹紀錄儲存至雲端，在不同裝置間同步資料。</p>
+                <p class="text-slate-500 text-sm mb-6">請使用 Google 登入以同步並保存您的包裹資料。</p>
                 <button onclick="login()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
                     使用 Google 登入
                 </button>
             </div>
         </div>
 
+        <!-- Tab 切換 (3個分頁) -->
         <div class="flex p-1 bg-slate-200 rounded-xl mb-4">
-            <button onclick="switchTab('list')" id="tab-list" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all bg-white text-blue-600 shadow-sm">我的包裹</button>
-            <button onclick="switchTab('address')" id="tab-address" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-slate-500">集運倉地址</button>
+            <button onclick="switchTab('active')" id="tab-active" class="flex-1 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all bg-white text-blue-600 shadow-sm">未完結</button>
+            <button onclick="switchTab('history')" id="tab-history" class="flex-1 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all text-slate-500">歷史紀錄</button>
+            <button onclick="switchTab('address')" id="tab-address" class="flex-1 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all text-slate-500">地址</button>
         </div>
 
+        <!-- 視圖：集運倉地址 -->
         <div id="view-address" class="hidden fade-in-up space-y-4">
             <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
                 <div class="bg-blue-50/50 p-4 border-b border-blue-100 flex gap-3">
@@ -96,7 +98,22 @@
             <button onclick="copyText('海风转hsinying_1110 18692913869 广东省东莞市厚街镇宝塘社区康乐南路305号鼎昊智能高科产业园12栋1楼6号仓库81332号', '完整地址')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-medium active:scale-[0.98] transition-transform shadow-sm">複製完整地址 (一鍵貼上)</button>
         </div>
 
+        <!-- 視圖：包裹列表 -->
         <div id="view-list" class="fade-in-up space-y-4">
+            <!-- 封存按鈕區 (只在 active tab 且有可封存項目時顯示) -->
+            <div id="archive-action-area" class="hidden">
+                 <button onclick="archiveShippedPackages()" class="w-full py-3 bg-indigo-100 text-indigo-700 rounded-xl font-bold flex items-center justify-center gap-2 active:bg-indigo-200 transition-colors">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+                    將「已運回」包裹封存 (移至歷史)
+                 </button>
+            </div>
+
+            <!-- 歷史模式提示 -->
+            <div id="history-banner" class="hidden p-3 bg-slate-100 rounded-lg text-center text-xs text-slate-500">
+                這是已封存的歷史紀錄，僅供查詢
+            </div>
+
+            <!-- 統計區 -->
             <div class="grid grid-cols-2 gap-3">
                 <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
                     <span class="text-xs text-slate-400 mb-1">待入庫</span>
@@ -109,7 +126,7 @@
             </div>
             
             <div class="text-center text-xs text-slate-400 font-medium bg-slate-100 py-1 rounded-full mx-auto w-fit px-4">
-                總重 <span id="total-weight-display">0.00</span> kg
+                本頁總重 <span id="total-weight-display">0.00</span> kg
             </div>
 
             <div id="package-list-container" class="space-y-3 pb-20"></div>
@@ -123,18 +140,19 @@
                 <div class="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-10 h-10 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
                 </div>
-                <p class="text-slate-500 font-medium">還沒有包裹</p>
+                <p class="text-slate-500 font-medium">目前沒有包裹</p>
                 <p class="text-slate-400 text-sm mt-1">點擊右下角按鈕新增</p>
             </div>
         </div>
     </main>
 
-    <div class="fixed bottom-8 right-6 z-30 safe-area-bottom">
+    <div id="fab-container" class="fixed bottom-8 right-6 z-30 safe-area-bottom">
         <button onclick="toggleModal(true)" class="w-14 h-14 bg-blue-600 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-white active:scale-90 transition-transform">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
         </button>
     </div>
 
+    <!-- Modal (Add Package) -->
     <div id="add-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleModal(false)"></div>
         <div class="bg-white w-full sm:w-[400px] rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl z-10 fade-in-up max-h-[90vh] overflow-y-auto safe-area-bottom">
@@ -164,13 +182,12 @@
     </div>
 
     <script type="module">
-        // 導入 Firebase 函式庫 (使用 CDN 連結)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, writeBatch, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ============================================
-        // --- 你的 Firebase 設定 (已整合) ---
+        // --- 請確認這裡的 Config 正確 ---
         // ============================================
         const firebaseConfig = {
             apiKey: "AIzaSyDVkAU_2NXdpwGKQ4Lx5kW6x3XllvOjZgA",
@@ -182,158 +199,194 @@
             measurementId: "G-PED41VWL1X"
         };
 
-        // 初始化 Firebase
+        // Init Firebase
         let app, auth, db, currentUser;
-        
+        let allPackages = []; // Local cache
+        let currentTab = 'active'; // 'active' or 'history' or 'address'
+
         try {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-            console.log("Firebase initialized successfully");
         } catch (e) {
-            console.error("Firebase 初始化失敗", e);
-            document.getElementById('loading-state').innerHTML = '<p class="text-red-500">Firebase 設定錯誤，請檢查控制台</p>';
+            console.error("Firebase Error", e);
+            document.getElementById('loading-state').innerHTML = '<p class="text-red-500">Firebase 設定錯誤</p>';
         }
 
-        // --- Auth 邏輯 ---
-        const loginOverlay = document.getElementById('login-overlay');
-        const userInfo = document.getElementById('user-info');
-        const btnLogin = document.getElementById('btn-login');
-        const userAvatar = document.getElementById('user-avatar');
-
+        // --- Auth Logic ---
         window.login = () => {
-            const provider = new GoogleAuthProvider();
-            signInWithPopup(auth, provider).catch(error => {
-                showToast("登入失敗: " + error.message);
-                console.error("Login Error:", error);
-            });
+            signInWithPopup(auth, new GoogleAuthProvider()).catch(err => showToast("登入失敗: " + err.message));
         };
-
         window.logout = () => {
-            if(confirm("確定要登出嗎？")) {
-                signOut(auth);
-            }
+            if(confirm("確定要登出嗎？")) signOut(auth);
         };
 
         if(auth) {
             onAuthStateChanged(auth, (user) => {
                 currentUser = user;
+                const overlay = document.getElementById('login-overlay');
+                const userInfo = document.getElementById('user-info');
+                const btnLogin = document.getElementById('btn-login');
+                const avatar = document.getElementById('user-avatar');
+
                 if (user) {
-                    loginOverlay.classList.add('hidden');
-                    userInfo.classList.remove('hidden');
-                    userInfo.classList.add('flex');
+                    overlay.classList.add('hidden');
+                    userInfo.classList.remove('hidden'); userInfo.classList.add('flex');
                     btnLogin.classList.add('hidden');
-                    userAvatar.src = user.photoURL || 'https://via.placeholder.com/32';
+                    avatar.src = user.photoURL || 'https://via.placeholder.com/32';
                     subscribeToPackages(user.uid);
                 } else {
-                    loginOverlay.classList.remove('hidden');
-                    userInfo.classList.add('hidden');
-                    userInfo.classList.remove('flex');
+                    overlay.classList.remove('hidden');
+                    userInfo.classList.add('hidden'); userInfo.classList.remove('flex');
                     btnLogin.classList.remove('hidden');
-                    renderList([]);
-                    document.getElementById('loading-state').classList.add('hidden');
+                    allPackages = [];
+                    renderList();
                 }
             });
         }
 
-        // --- Firestore 邏輯 ---
+        // --- Firestore Logic ---
         let unsubscribe = null;
 
         function subscribeToPackages(uid) {
             document.getElementById('loading-state').classList.remove('hidden');
-            document.getElementById('empty-state').classList.add('hidden');
-            document.getElementById('package-list-container').innerHTML = '';
-
             if (unsubscribe) unsubscribe();
 
+            // Fetch ALL packages ordered by date
             const q = query(collection(db, "users", uid, "packages"), orderBy("createdAt", "desc"));
             
             unsubscribe = onSnapshot(q, (snapshot) => {
-                const packages = [];
+                allPackages = [];
                 snapshot.forEach((doc) => {
-                    packages.push({ id: doc.id, ...doc.data() });
+                    allPackages.push({ id: doc.id, ...doc.data() });
                 });
-                renderList(packages);
+                renderList();
                 document.getElementById('loading-state').classList.add('hidden');
             }, (error) => {
-                console.error("讀取失敗", error);
-                if(error.code === 'permission-denied') {
-                    showToast("權限不足：請檢查 Firebase 安全規則");
-                } else {
-                    showToast("資料讀取失敗");
-                }
+                console.error(error);
+                showToast("資料讀取失敗");
             });
         }
 
+        // --- Save / Update / Delete ---
         window.savePackageToDB = async (pkgData) => {
             if (!currentUser) return;
             try {
+                // Add new package with archived: false by default
                 await addDoc(collection(db, "users", currentUser.uid, "packages"), {
                     ...pkgData,
+                    archived: false, 
                     createdAt: serverTimestamp()
                 });
-                showToast("已同步至雲端");
-            } catch (e) {
-                console.error(e);
-                showToast("儲存失敗");
-            }
+                showToast("已新增");
+            } catch (e) { showToast("新增失敗"); }
         };
 
         window.updatePackageStatus = async (docId, field, value) => {
             if (!currentUser) return;
-            const ref = doc(db, "users", currentUser.uid, "packages", docId);
             try {
-                await updateDoc(ref, { [field]: value });
-            } catch (e) {
-                showToast("更新失敗");
-            }
+                await updateDoc(doc(db, "users", currentUser.uid, "packages", docId), { [field]: value });
+            } catch (e) { showToast("更新失敗"); }
         };
 
         window.deletePackageFromDB = async (docId) => {
             if (!currentUser) return;
-            const ref = doc(db, "users", currentUser.uid, "packages", docId);
             try {
-                await deleteDoc(ref);
+                await deleteDoc(doc(db, "users", currentUser.uid, "packages", docId));
                 showToast("已刪除");
+            } catch (e) { showToast("刪除失敗"); }
+        };
+
+        // --- New Feature: Archive Shipped Packages ---
+        window.archiveShippedPackages = async () => {
+            if (!currentUser) return;
+            
+            // Find items that are Shipped BUT NOT Archived
+            const itemsToArchive = allPackages.filter(p => p.shipped && !p.archived);
+            
+            if (itemsToArchive.length === 0) {
+                showToast("沒有可封存的「已運回」包裹");
+                return;
+            }
+
+            if (!confirm(`確定要將這 ${itemsToArchive.length} 件已運回的包裹移至歷史紀錄嗎？`)) return;
+
+            const batch = writeBatch(db);
+            itemsToArchive.forEach(pkg => {
+                const ref = doc(db, "users", currentUser.uid, "packages", pkg.id);
+                batch.update(ref, { archived: true });
+            });
+
+            try {
+                await batch.commit();
+                showToast(`成功封存 ${itemsToArchive.length} 件包裹`);
             } catch (e) {
-                showToast("刪除失敗");
+                console.error(e);
+                showToast("封存失敗");
             }
         };
 
 
-        // --- UI & Helper Functions ---
-        let currentImage = null;
-
-        function renderList(packages) {
+        // --- UI Rendering ---
+        window.renderList = () => {
             const container = document.getElementById('package-list-container');
             const emptyState = document.getElementById('empty-state');
-            const statWaiting = document.getElementById('stat-waiting');
-            const statArrived = document.getElementById('stat-arrived');
-            const totalWeightDisplay = document.getElementById('total-weight-display');
+            const archiveArea = document.getElementById('archive-action-area');
+            const historyBanner = document.getElementById('history-banner');
+            const fab = document.getElementById('fab-container');
+
+            // Filter packages based on current tab
+            let displayPackages = [];
+            
+            if (currentTab === 'active') {
+                // Show only NON-archived
+                displayPackages = allPackages.filter(p => !p.archived);
+                // Check if we should show the "Archive" button
+                const hasShippedItems = displayPackages.some(p => p.shipped);
+                if (hasShippedItems) {
+                    archiveArea.classList.remove('hidden');
+                } else {
+                    archiveArea.classList.add('hidden');
+                }
+                historyBanner.classList.add('hidden');
+                fab.classList.remove('hidden');
+            } else if (currentTab === 'history') {
+                // Show ONLY archived
+                displayPackages = allPackages.filter(p => p.archived);
+                archiveArea.classList.add('hidden');
+                historyBanner.classList.remove('hidden');
+                fab.classList.add('hidden'); // Hide Add button in history
+            } else {
+                return; // Address view handled separately
+            }
 
             container.innerHTML = '';
             
-            let waiting = 0;
-            let arrived = 0;
-            let totalWeight = 0;
-
-            packages.forEach(pkg => {
+            // Stats Calculation
+            let waiting = 0, arrived = 0, totalWeight = 0;
+            displayPackages.forEach(pkg => {
                 if(pkg.arrived) arrived++; else waiting++;
                 totalWeight += (parseFloat(pkg.weight) || 0);
             });
 
-            statWaiting.textContent = waiting;
-            statArrived.textContent = arrived;
-            totalWeightDisplay.textContent = totalWeight.toFixed(2);
+            document.getElementById('stat-waiting').textContent = waiting;
+            document.getElementById('stat-arrived').textContent = arrived;
+            document.getElementById('total-weight-display').textContent = totalWeight.toFixed(2);
 
-            if (packages.length === 0) {
+            if (displayPackages.length === 0) {
                 emptyState.classList.remove('hidden');
+                // Customize empty message
+                const emptyText = emptyState.querySelector('p.font-medium');
+                emptyText.textContent = currentTab === 'history' ? "沒有歷史紀錄" : "目前沒有未完結包裹";
             } else {
                 emptyState.classList.add('hidden');
                 
-                packages.forEach(pkg => {
+                displayPackages.forEach(pkg => {
                     const el = document.createElement('div');
-                    el.className = 'bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden';
+                    el.className = 'bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden fade-in-up';
+                    // Gray out if in history
+                    if(pkg.archived) el.classList.add('opacity-75');
+
                     el.innerHTML = `
                         <div class="flex h-32">
                             <div class="w-24 bg-slate-100 flex-shrink-0 relative border-r border-slate-100 flex items-center justify-center overflow-hidden" onclick="viewImage('${pkg.image || ''}')">
@@ -361,10 +414,10 @@
                                         <span class="text-xs font-mono text-slate-500 truncate mr-2 bg-slate-50 px-1 py-0.5 rounded border border-slate-100">${esc(pkg.trackingNumber)}</span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <button onclick="handleStatus('${pkg.id}', 'arrived', ${!pkg.arrived})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.arrived ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-slate-400 border-slate-200'}">
+                                        <button ${pkg.archived ? 'disabled' : ''} onclick="handleStatus('${pkg.id}', 'arrived', ${!pkg.arrived})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.arrived ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-slate-400 border-slate-200'}">
                                             ${pkg.arrived ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> 已到倉' : '未入庫'}
                                         </button>
-                                        <button onclick="handleStatus('${pkg.id}', 'shipped', ${!pkg.shipped})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.shipped ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-400 border-slate-200'}">
+                                        <button ${pkg.archived ? 'disabled' : ''} onclick="handleStatus('${pkg.id}', 'shipped', ${!pkg.shipped})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.shipped ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-400 border-slate-200'}">
                                             ${pkg.shipped ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 18H3c-.6 0-1-.4-1-1V7c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v11"/><path d="M14 9h4l4 4v4c0 .6-.4 1-1 1h-2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg> 已運回' : '未發貨'}
                                         </button>
                                     </div>
@@ -375,29 +428,47 @@
                     container.appendChild(el);
                 });
             }
-        }
-        
-        // Window Global Functions
+        };
+
+        // --- Interaction ---
         window.switchTab = (tab) => {
-            const listBtn = document.getElementById('tab-list'), addrBtn = document.getElementById('tab-address');
-            const viewList = document.getElementById('view-list'), viewAddr = document.getElementById('view-address');
-            if (tab === 'list') {
-                listBtn.classList.replace('text-slate-500', 'bg-white'); listBtn.classList.add('text-blue-600', 'shadow-sm');
-                addrBtn.classList.replace('bg-white', 'text-slate-500'); addrBtn.classList.remove('text-blue-600', 'shadow-sm');
-                viewList.classList.remove('hidden'); viewAddr.classList.add('hidden');
+            currentTab = tab;
+            const tabActive = document.getElementById('tab-active');
+            const tabHistory = document.getElementById('tab-history');
+            const tabAddress = document.getElementById('tab-address');
+            
+            const viewList = document.getElementById('view-list');
+            const viewAddress = document.getElementById('view-address');
+
+            // Reset Styles
+            [tabActive, tabHistory, tabAddress].forEach(el => {
+                el.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+                el.classList.add('text-slate-500');
+            });
+
+            // Activate Current
+            const activeEl = document.getElementById(`tab-${tab}`);
+            activeEl.classList.remove('text-slate-500');
+            activeEl.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+
+            if (tab === 'address') {
+                viewList.classList.add('hidden');
+                viewAddress.classList.remove('hidden');
+                document.getElementById('fab-container').classList.add('hidden');
             } else {
-                addrBtn.classList.replace('text-slate-500', 'bg-white'); addrBtn.classList.add('text-blue-600', 'shadow-sm');
-                listBtn.classList.replace('bg-white', 'text-slate-500'); listBtn.classList.remove('text-blue-600', 'shadow-sm');
-                viewAddr.classList.remove('hidden'); viewList.classList.add('hidden');
+                viewList.classList.remove('hidden');
+                viewAddress.classList.add('hidden');
+                renderList();
             }
         };
 
+        // --- Standard Helpers (Same as before) ---
         window.toggleModal = (show) => {
             const modal = document.getElementById('add-modal');
             modal.classList.toggle('hidden', !show);
             if (show) { 
                 document.getElementById('add-form').reset(); 
-                currentImage = null; 
+                // currentImage = null; // Don't clear in case of accidental close? No, better clear
                 document.getElementById('preview-img').classList.add('hidden'); 
                 document.getElementById('upload-placeholder').classList.remove('hidden'); 
             }
@@ -406,16 +477,16 @@
         window.handleFileSelect = (input) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = (e) => {
                     const img = new Image();
-                    img.onload = function() {
+                    img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const MAX_WIDTH = 500; 
                         const scaleSize = MAX_WIDTH / img.width;
                         canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
                         const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        currentImage = canvas.toDataURL('image/jpeg', 0.6);
-                        document.getElementById('preview-img').src = currentImage;
+                        window.currentImage = canvas.toDataURL('image/jpeg', 0.6);
+                        document.getElementById('preview-img').src = window.currentImage;
                         document.getElementById('preview-img').classList.remove('hidden');
                         document.getElementById('upload-placeholder').classList.add('hidden');
                     };
@@ -424,6 +495,9 @@
                 reader.readAsDataURL(input.files[0]);
             }
         };
+        
+        // Expose currentImage to window for handler
+        window.currentImage = null;
 
         window.handleAddSubmit = (e) => {
             e.preventDefault();
@@ -439,39 +513,31 @@
                 channel,
                 category,
                 weight: weight,
-                image: currentImage,
+                image: window.currentImage,
                 arrived: false,
                 shipped: false
             });
+            window.currentImage = null;
             toggleModal(false);
         };
 
-        window.handleDelete = (id) => {
-            if(confirm('確定要刪除嗎？')) {
-                window.deletePackageFromDB(id);
-            }
-        };
-
-        window.handleStatus = (id, field, value) => {
-            if (navigator.vibrate) navigator.vibrate(50);
-            window.updatePackageStatus(id, field, value);
-        };
-
+        window.handleDelete = (id) => { if(confirm('確定要刪除嗎？')) window.deletePackageFromDB(id); };
+        window.handleStatus = (id, field, value) => { if (navigator.vibrate) navigator.vibrate(50); window.updatePackageStatus(id, field, value); };
         window.copyText = (text, label) => {
             const textarea = document.createElement('textarea'); textarea.value = text; textarea.style.position = 'fixed';
             document.body.appendChild(textarea); textarea.focus(); textarea.select();
             try { document.execCommand('copy'); showToast('已複製 ' + label); } catch (err) { showToast('複製失敗'); }
             document.body.removeChild(textarea);
         };
-
         window.showToast = (msg) => {
             const toast = document.getElementById('toast'); document.getElementById('toast-msg').textContent = msg;
             toast.classList.remove('hidden'); setTimeout(() => toast.classList.add('hidden'), 2000);
         };
-
         window.viewImage = (src) => { if(!src) return; const w = window.open(""); w.document.write(`<img src="${src}" style="width:100%"/>`); };
-
         function esc(str) { if(!str) return ''; return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+
+        // Initialize default tab
+        switchTab('active');
     </script>
 </body>
 </html>
