@@ -32,7 +32,6 @@
             <div class="bg-blue-600 p-1.5 rounded-lg text-white">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             </div>
-            <!-- 這裡已經移除了藍色的 Sort 字樣 -->
             <h1 class="text-lg font-bold text-slate-900">集運助手</h1>
         </div>
         
@@ -214,7 +213,7 @@
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ============================================
-        // --- 你的 Firebase Config (已整合) ---
+        // --- 你的 Firebase Config ---
         // ============================================
         const firebaseConfig = {
             apiKey: "AIzaSyDVkAU_2NXdpwGKQ4Lx5kW6x3XllvOjZgA",
@@ -342,7 +341,6 @@
             catch (e) { showToast("封存失敗"); }
         };
 
-        // --- Search Logic ---
         window.handleSearch = (val) => {
             searchQuery = val.toLowerCase().trim();
             const clearBtn = document.getElementById('search-clear');
@@ -392,11 +390,7 @@
                 weightLabel.textContent = "本頁總重";
             }
 
-            // 3. Smart Sorting Logic (The Fix)
-            // Priority:
-            // 0: Unfinished (Not arrived, Not shipped)
-            // 1: Arrived (Arrived, Not shipped)
-            // 2: Shipped (Shipped)
+            // 3. Smart Sorting Logic
             displayPackages.sort((a, b) => {
                 const getStatusWeight = (p) => {
                     if (p.shipped) return 2;
@@ -407,13 +401,19 @@
                 const weightA = getStatusWeight(a);
                 const weightB = getStatusWeight(b);
 
-                // Sort by status weight (ascending)
+                // Sort by status (ascending)
                 if (weightA !== weightB) {
                     return weightA - weightB;
                 }
                 
-                // If status is same, keep original time order (descending)
-                return 0; 
+                // Sort by date (descending - newest first)
+                const getTime = (p) => {
+                    if (!p.createdAt) return 0;
+                    if (typeof p.createdAt.toMillis === 'function') return p.createdAt.toMillis();
+                    if (p.createdAt.seconds) return p.createdAt.seconds * 1000;
+                    return 0;
+                };
+                return getTime(b) - getTime(a);
             });
 
 
@@ -473,8 +473,15 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <div class="flex items-center justify-between mb-2 mt-1" onclick="copyText('${esc(pkg.trackingNumber)}', '運單號')">
-                                        <span class="text-xs font-mono text-slate-500 truncate mr-2 bg-slate-50 px-1 py-0.5 rounded border border-slate-100">${esc(pkg.trackingNumber)}</span>
+                                    <div class="flex items-center justify-between mb-2 mt-1">
+                                        <div class="flex items-center min-w-0" onclick="copyText('${esc(pkg.trackingNumber)}', '運單號')">
+                                            <span class="text-xs font-mono text-slate-500 truncate mr-2 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 cursor-pointer">${esc(pkg.trackingNumber)}</span>
+                                        </div>
+                                        <!-- 一鍵查詢按鈕 (跳轉) -->
+                                        <a href="https://m.kuaidi100.com/result.jsp?nu=${esc(pkg.trackingNumber)}" target="_blank" class="flex items-center gap-1 text-xs text-blue-500 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 hover:bg-blue-100 active:scale-95 transition-transform" onclick="event.stopPropagation()">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                            查詢
+                                        </a>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button ${pkg.archived ? 'disabled' : ''} onclick="handleStatus('${pkg.id}', 'arrived', ${!pkg.arrived})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.arrived ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-slate-400 border-slate-200'}">
