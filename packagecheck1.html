@@ -213,7 +213,7 @@
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ============================================
-        // --- 你的 Firebase Config (請保持原樣) ---
+        // --- 你的 Firebase Config (已整合) ---
         // ============================================
         const firebaseConfig = {
             apiKey: "AIzaSyDVkAU_2NXdpwGKQ4Lx5kW6x3XllvOjZgA",
@@ -356,7 +356,6 @@
 
         // --- Cainiao Jump Logic ---
         window.openCainiao = (trackingNum) => {
-            // 1. Copy
             const textarea = document.createElement('textarea');
             textarea.value = trackingNum;
             textarea.style.position = 'fixed';
@@ -371,7 +370,6 @@
             }
             document.body.removeChild(textarea);
 
-            // 2. Try Open App (Delay slightly to allow copy)
             setTimeout(() => {
                  window.location.href = "cainiao://";
             }, 500);
@@ -492,20 +490,11 @@
                                             <span class="text-xs font-mono text-slate-500 truncate mr-2 bg-slate-50 px-1 py-0.5 rounded border border-slate-100 cursor-pointer">${esc(pkg.trackingNumber)}</span>
                                         </div>
                                         
-                                        <!-- 雙查詢按鈕 -->
-                                        <div class="flex gap-1.5">
-                                            <!-- 百度查詢 (解決中通/韻達問題) -->
-                                            <a href="https://www.baidu.com/s?wd=${esc(pkg.trackingNumber)}" target="_blank" class="flex items-center gap-0.5 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 active:scale-95 transition-transform" onclick="event.stopPropagation()">
-                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                                                百度
-                                            </a>
-                                            <!-- 菜鳥喚起 (複製+跳轉) -->
-                                            <button onclick="event.stopPropagation(); openCainiao('${esc(pkg.trackingNumber)}')" class="flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 active:scale-95 transition-transform">
-                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
-                                                菜鳥
-                                            </button>
-                                        </div>
-
+                                        <!-- 菜鳥喚起按鈕 -->
+                                        <button onclick="event.stopPropagation(); openCainiao('${esc(pkg.trackingNumber)}')" class="flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 active:scale-95 transition-transform font-medium">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                                            菜鳥
+                                        </button>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button ${pkg.archived ? 'disabled' : ''} onclick="handleStatus('${pkg.id}', 'arrived', ${!pkg.arrived})" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 ${pkg.arrived ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-slate-400 border-slate-200'}">
