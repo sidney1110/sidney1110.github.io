@@ -2,91 +2,237 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>北海道雪祭八日遊 v18.6 (Emoji更新)</title>
-
-    <!-- 核心套件 -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VICTOR+ 得勝者文教 | 招募專區</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Leaflet 地圖 -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- 字體 -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
-
+    <!-- 引入 React 與 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 引入 Babel 以解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        /* --- 基礎設定 --- */
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #334155; margin: 0; padding: 0; overflow: hidden; height: 100dvh; width: 100vw; }
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* 載入畫面 */
-        #loading { position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: center; align-items: center; background: #f8fafc; transition: opacity 0.5s; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* --- 四季動態粒子 --- */
-        .particle-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; overflow: hidden; }
-        .particle { position: absolute; opacity: 0; }
-        @keyframes fall { 0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(110vh) translateX(20px) rotate(360deg); opacity: 0.6; } }
-        @keyframes float-up { 0% { transform: translateY(110vh) scale(0.5); opacity: 0; } 30% { opacity: 0.6; } 100% { transform: translateY(-10vh) scale(1.2); opacity: 0; } }
-
-        /* 粒子樣式 */
-        .p-snow { background: #fff; border-radius: 50%; box-shadow: 0 0 4px white; animation: fall linear infinite; }
-        .p-flower { background: radial-gradient(circle, #fbcfe8 0%, #f472b6 100%); border-radius: 100% 0 100% 0; animation: fall linear infinite; }
-        .p-sun { background: radial-gradient(circle, rgba(253,224,71,0.8) 0%, rgba(253,224,71,0) 70%); border-radius: 50%; animation: float-up linear infinite; }
-        .p-leaf { background: linear-gradient(45deg, #f59e0b, #ef4444); border-radius: 2px 20px; animation: fall linear infinite; }
-
-        /* --- UI 元件 --- */
-        .ticket-card {
-            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
-            mask: radial-gradient(circle at 0 50%, transparent 10px, black 11px), radial-gradient(circle at 100% 50%, transparent 10px, black 11px);
-            -webkit-mask: radial-gradient(circle at 0 50%, transparent 10px, black 11px), radial-gradient(circle at 100% 50%, transparent 10px, black 11px);
-            mask-composite: intersect; -webkit-mask-composite: source-in;
-        }
-        .hsr-orange-bar { height: 6px; width: 100%; background-color: #ff6b00; }
-
-        .timeline-track { position: absolute; left: 24px; top: 35px; bottom: -20px; width: 2px; background-color: #e2e8f0; z-index: 0; }
-        .timeline-item:last-child .timeline-track { display: none; }
-        .scroll-touch { -webkit-overflow-scrolling: touch; }
-
-        /* Map Styles */
-        #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: #e2e8f0; }
-        #map { width: 100%; height: 100%; }
-        /* 復刻 v6 的 marker 樣式 */
-        .custom-div-icon { background: transparent; border: none; }
-        .marker-circle { 
-            width: 28px; height: 28px; border-radius: 50%; 
-            background: #2563eb; color: white; 
-            font-weight: bold; font-size: 14px; 
-            display: flex; align-items: center; justify-content: center; 
-            border: 2px solid white; 
-            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.4); 
-            transition: transform 0.2s;
-        }
-        .marker-circle:active { transform: scale(1.2); }
-
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.8; cursor: pointer; }
-        select { -webkit-appearance: none; appearance: none; background-image: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 selection:bg-pink-100">
+    <div id="root"></div>
 
-    <!-- Loading -->
-    <div id="loading"><div class="spinner"></div></div>
+    <script type="text/babel">
+        const { useState } = React;
 
-    <div id="app" class="w-full h-full relative flex flex-col bg-[#f3f4f6]" style="display: none;">
+        /* SVG 圖示組件 */
+        const IconPhone = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
+        const IconMapPin = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>;
+        const IconUserCheck = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>;
+        const IconCheckCircle = ({ size, color, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>;
+        const IconGradCap = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>;
+        const IconBuilding = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
+        const IconMouseClick = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4.1 12 6"></path><path d="m5.1 8-2.9-.8"></path><path d="m6 12-1.9 2"></path><path d="M7.2 2.2 8 5.1"></path><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"></path></svg>;
+        const IconExternalLink = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>;
+        const IconRepeat = ({ size, color }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>;
 
-        <!-- 背景特效 -->
-        <div class="particle-container">
-            <div v-for="i in 30" :key="'p'+i" class="particle" :class="themeConf.particleClass" :style="getParticleStyle(themeConf.particleType)"></div>
-        </div>
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('teaching');
 
-        <!-- Header -->
-        <!-- 這裡以下其實可以直接用你貼的完整內容；為了簡化 Python 負擔，直接從原始 txt 檔讀也可以 -->
-    </div>
+            const theme = {
+                primary: '#8B1D57',   /* VICTOR紫紅 */
+                textDark: '#231F20',  /* 標題深灰黑 */
+                textGray: '#595757',  /* 內文灰 */
+                bgLight: '#F8F9FA',   /* 區塊淺灰底 */
+                border: '#E5E7EB'
+            };
+
+            const jobLink = "https://www.104.com.tw/job/80jj8?jobsource=google";
+
+            const TimelineItem = ({ title, stage, desc, isLast }) => (
+                <div className="relative pl-8 py-4">
+                    {!isLast && <div className="absolute left-[11px] top-10 bottom-[-16px] w-[2px] bg-gray-200"></div>}
+                    <div className="absolute left-0 top-6 w-6 h-6 rounded-full border-4 border-white shadow-sm z-10" style={{ backgroundColor: theme.primary }}></div>
+                    
+                    <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                            <h4 className="text-xl font-bold" style={{ color: theme.textDark }}>{title}</h4>
+                            <span className="text-xs font-bold px-3 py-1 rounded bg-gray-100 w-fit" style={{ color: theme.primary }}>{stage}</span>
+                        </div>
+                        <p className="text-gray-600 leading-relaxed text-sm md:text-base">{desc}</p>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen font-sans text-gray-800 flex flex-col">
+                    {/* Header */}
+                    <header className="px-6 md:px-10 py-5 border-b flex justify-between items-center bg-white z-10" style={{ borderColor: theme.border }}>
+                        
+                        {/* 純 CSS 繪製的 Logo 區塊 */}
+                        <div className="flex-shrink-0 flex flex-col items-center">
+                            <div className="flex items-center">
+                                <span className="text-3xl md:text-5xl font-black tracking-tighter leading-none" style={{ color: theme.textDark }}>VICT</span>
+                                <div className="relative mx-1 w-7 h-7 md:w-10 md:h-10">
+                                    <div className="absolute inset-0 rounded-full border-[0.5rem] md:border-[0.7rem] border-gray-600"></div>
+                                    <div className="absolute inset-0 rounded-full border-[0.5rem] md:border-[0.7rem] border-transparent" style={{ borderTopColor: theme.primary, transform: 'rotate(45deg)' }}></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-[110%] h-[2px] md:h-[3px] bg-white"></div>
+                                        <div className="h-[110%] w-[2px] md:w-[3px] bg-white absolute"></div>
+                                    </div>
+                                </div>
+                                <span className="text-3xl md:text-5xl font-black leading-none" style={{ color: theme.textDark }}>R</span>
+                                <span className="text-2xl md:text-4xl font-black leading-none ml-1 relative -top-2 md:-top-3" style={{ color: theme.primary }}>+</span>
+                            </div>
+                            <span className="mt-1 md:mt-2 text-gray-500 font-bold tracking-[0.3em] text-xs md:text-sm ml-2">得勝者文教</span>
+                        </div>
+
+                        <div className="text-right hidden md:block">
+                            <div className="inline-flex items-center gap-2 bg-red-50 text-red-700 px-4 py-1.5 rounded text-sm font-bold mb-3 border border-red-100">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                </span>
+                                3/24 台師大就業博覽會 現場招募
+                            </div>
+                            <div className="flex items-center justify-end gap-6 text-sm font-medium text-gray-600">
+                                <div className="flex items-center gap-2">
+                                    <IconPhone size={16} color={theme.primary} />
+                                    <span>02-2314-5818</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <IconMapPin size={16} color={theme.primary} />
+                                    <span>100臺北市中正區中山南路2巷5號</span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="flex-grow flex flex-col lg:flex-row">
+                        {/* Left Column */}
+                        <section className="w-full lg:w-5/12 p-8 md:p-10 lg:p-16 flex flex-col justify-center border-r" style={{ borderColor: theme.border, backgroundColor: theme.bgLight }}>
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6 md:mb-8" style={{ color: theme.textDark }}>
+                                定義你的<br />
+                                <span style={{ color: theme.primary }}>教學價值</span>
+                            </h1>
+                            <p className="text-lg md:text-xl text-gray-600 mb-8 md:mb-10 leading-relaxed">
+                                在得勝者，導師不只是行政職。<br/>
+                                它是深耕教育現場的起點，更是通往「專業小班授課」與「高階校區管理」的最佳跳板。
+                            </p>
+
+                            <div className="bg-white p-6 md:p-8 rounded-2xl border shadow-sm" style={{ borderColor: theme.border }}>
+                                <h3 className="text-xl font-bold mb-6 flex items-center gap-3" style={{ color: theme.textDark }}>
+                                    <IconUserCheck size={26} color={theme.primary} />
+                                    尋找具備以下特質的你
+                                </h3>
+                                <ul className="space-y-4 md:space-y-5">
+                                    {["樂於觀察並引導學生解決困難", "對特定學科知識有傳遞熱誠", "細心穩重，具備高度溝通協調力", "渴望在完整的升遷制度中創造價值"].map((item, idx) => (
+                                        <li key={idx} className="flex items-start gap-4">
+                                            <IconCheckCircle size={22} color={theme.primary} className="shrink-0 mt-0.5" />
+                                            <span className="font-medium text-gray-700 text-base md:text-lg">{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </section>
+
+                        {/* Right Column */}
+                        <section className="w-full lg:w-7/12 p-8 md:p-10 lg:p-16 bg-white flex flex-col">
+                            <div className="mb-6 md:mb-8">
+                                <h2 className="text-2xl md:text-3xl font-black mb-3" style={{ color: theme.textDark }}>雙軌制專業升遷路徑</h2>
+                                <p className="text-gray-500 text-base md:text-lg">點擊下方標籤，探索適合您的職涯發展</p>
+                            </div>
+
+                            {/* 亮點：高彈性轉換提示區塊 */}
+                            <div className="mb-8 p-4 md:p-5 rounded-xl border flex items-start gap-4 transition-all hover:shadow-md" style={{ backgroundColor: '#FDF2F8', borderColor: '#FBCFE8' }}>
+                                <div className="p-2 bg-white rounded-lg shadow-sm shrink-0 mt-1">
+                                    <IconRepeat size={24} color={theme.primary} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-gray-900 text-lg mb-1">職涯發展高彈性：並行與無縫轉換</h4>
+                                    <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+                                        教學與管理並非單選題！在得勝者，您不僅可以<b>雙線並進</b>，若在嘗試教學後發現不適合，也能隨時安穩地<b>回歸管理升職路線</b>，給您最安心的發展空間。
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="flex border-b-2 mb-8 overflow-x-auto hide-scrollbar" style={{ borderColor: theme.border }}>
+                                <button
+                                    onClick={() => setActiveTab('teaching')}
+                                    className={`pb-4 px-4 md:px-6 text-lg md:text-xl font-bold transition-colors whitespace-nowrap relative ${activeTab === 'teaching' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    專業小班教學線
+                                    {activeTab === 'teaching' && <div className="absolute bottom-[-2px] left-0 w-full h-[3px] rounded-t" style={{ backgroundColor: theme.primary }}></div>}
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('management')}
+                                    className={`pb-4 px-4 md:px-6 text-lg md:text-xl font-bold transition-colors whitespace-nowrap relative ${activeTab === 'management' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    總導師管理升值線
+                                    {activeTab === 'management' && <div className="absolute bottom-[-2px] left-0 w-full h-[3px] rounded-t" style={{ backgroundColor: theme.primary }}></div>}
+                                </button>
+                            </div>
+
+                            {/* Timeline Content */}
+                            <div className="flex-grow">
+                                {activeTab === 'teaching' ? (
+                                    <div className="animate-in fade-in duration-500">
+                                        <div className="flex items-center gap-3 mb-6 text-gray-600">
+                                            <IconGradCap size={24} color={theme.primary} />
+                                            <span className="font-medium text-base md:text-lg">專為對授課有熱忱的教育者打造</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <TimelineItem title="專業導師" stage="行政職缺起點" desc="負責班級文化建立與學員狀態管理，從最前線了解學生的學習痛點，打好教育實務基礎。" />
+                                            <TimelineItem title="小班個別輔導" stage="第二階段" desc="針對特定需求學生進行課後解惑與小組輔導，實戰磨練您的學科專業與表達口條。" />
+                                            <TimelineItem title="專業小班授課講師" stage="專業成就" desc="通過內部考評，正式站上講台負責得勝者核心小班課程，成為備受信任的教學專家。" isLast={true} />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="animate-in fade-in duration-500">
+                                        <div className="flex items-center gap-3 mb-6 text-gray-600">
+                                            <IconBuilding size={24} color={theme.primary} />
+                                            <span className="font-medium text-base md:text-lg">專為具備行政與領導長才的管理人才打造</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <TimelineItem title="專業導師" stage="行政職缺起點" desc="紮實學習補教現場的班務運作、親師溝通技巧與突發狀況處理，累積行政實力。" />
+                                            <TimelineItem title="資深專案導師" stage="第二階段" desc="職責擴大至跨部門協調、主導大型專案執行與招生戰略規劃，深化管理專業。" />
+                                            <TimelineItem title="校區總導師 / 主任" stage="管理成就" desc="全面領導導師團隊，統籌整個校區的營運發展，成為教育集團內部的高階專業經理人。" isLast={true} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 104 CTA */}
+                            <div className="mt-8 p-6 md:p-8 rounded-2xl flex flex-col xl:flex-row items-center justify-between border shadow-sm transition-all gap-6" style={{ backgroundColor: theme.bgLight, borderColor: theme.border }}>
+                                <div className="flex-1 text-center xl:text-left">
+                                    <h4 className="font-black text-xl md:text-2xl mb-2" style={{ color: theme.textDark }}>現在就開啟您的教育職涯</h4>
+                                    <p className="text-gray-600 font-medium flex items-center justify-center xl:justify-start gap-2 mb-4 xl:mb-0">
+                                        <IconMouseClick size={18} color={theme.primary} />
+                                        點擊按鈕或掃描行動條碼，前往 104 了解職缺詳情
+                                    </p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+                                    {/* 電腦版專屬顯示的 104 QR Code */}
+                                    <div className="hidden sm:block bg-white p-2 rounded-xl border shadow-sm transition-transform hover:scale-105">
+                                        <img 
+                                            src={`https://quickchart.io/qr?text=${encodeURIComponent(jobLink)}&size=120&margin=1`} 
+                                            alt="104 職缺 QR Code" 
+                                            className="w-16 h-16 md:w-20 md:h-20 object-contain" 
+                                        />
+                                    </div>
+                                    <a href={jobLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3 text-white px-8 py-4 rounded-xl font-bold text-lg md:text-xl shadow-lg hover:opacity-90 active:scale-95 transition-all w-full sm:w-auto text-center h-fit" style={{ backgroundColor: theme.primary }}>
+                                        前往 104 投遞履歷 <IconExternalLink size={22} color="white" />
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
